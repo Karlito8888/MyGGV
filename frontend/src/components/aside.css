@@ -1,0 +1,122 @@
+.aside-container {
+  height: 100%;
+  /* position: relative; */
+  display: flex;
+  flex-direction: column;
+}
+
+.aside-toggle {
+  min-width: 2rem;
+  min-height: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  border-radius: 9999px;
+  cursor: pointer;
+  margin-top: 20px;
+  margin-inline: auto;
+}
+
+.aside-logo {
+  width: 100%;
+  min-height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.aside-logo.open {
+  min-height: 90px;
+}
+
+.aside-logo img {
+  transition: all 0.3s ease;
+}
+
+.aside-logo.closed img {
+  width: 50px;
+  height: 50px;
+}
+
+.aside-logo.open img {
+  width: 80px;
+  height: 80px;
+}
+
+.aside-nav {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.aside-nav-top {
+  display: grid;
+  /* gap: 1rem; */
+  padding-top: 30px;
+}
+
+.aside-nav-bottom {
+  display: grid;
+  padding: 1rem 0;
+}
+
+.nav-link {
+  color: #374151;
+  width: 100%;
+  max-width: 256px;
+  height: 60px;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-link:hover {
+  transform: scale(1.1);
+  transition: transform 0.2s ease;
+}
+
+.nav-link.active {
+  color: #0a0b0c;
+}
+
+.nav-link span {
+  display: block;
+  text-align: center;
+  width: 100%;
+  white-space: nowrap;
+  transition: opacity 0.3s ease 0.2s, width 0.3s ease 0.2s;
+}
+
+.nav-link.closed span {
+  opacity: 0;
+  width: 0;
+  /* background-color: yellow; */
+}
+
+.nav-link.open span {
+  opacity: 1;
+  width: auto;
+  /* background-color: green; */
+}
+
+.nav-icon {
+  display: block;
+  margin: 0 auto;
+  width: 2rem;
+  height: 2rem;
+}
+
+.nav-link-button {
+  /* Copiez ici les styles de .nav-link */
+  font-size: 1.3rem;
+  font-family: "Madimi One", serif;
+  font-weight: 400;
+  font-style: normal;
+  color: #374151;
+  background: none;
+  border: none;
+  cursor: pointer;
+  /* Ajoutez d'autres styles si nécessaire */
+}

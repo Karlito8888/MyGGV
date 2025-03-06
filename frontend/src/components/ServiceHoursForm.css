@@ -1,0 +1,90 @@
+.service-hours-form {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  background-color: var(--background-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.service-hours-form .form-group {
+  margin-bottom: 1.5rem;
+}
+
+.service-hours-form .form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--primary-text-color);
+  font-weight: 500;
+}
+
+.service-hours-form .form-group input[type="time"],
+.service-hours-form .form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-background);
+  color: var(--primary-text-color);
+  font-size: 1rem;
+}
+
+.service-hours-form .form-group input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.service-hours-form .checkbox-group {
+  display: flex;
+  align-items: center;
+}
+
+.service-hours-form .form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.service-hours-form button[type="submit"] {
+  padding: 0.75rem 1.5rem;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background-color 0.3s ease;
+}
+
+.service-hours-form button[type="submit"]:hover {
+  background-color: var(--primary-color-dark);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .service-hours-form {
+    margin: 1rem;
+    padding: 1rem;
+  }
+
+  .service-hours-form .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .service-hours-form button[type="submit"] {
+    width: 100%;
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .service-hours-form {
+    margin: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .service-hours-form .form-group input[type="time"],
+  .service-hours-form .form-group select {
+    padding: 0.5rem;
+    font-size: 0.9rem;
+  }
+}

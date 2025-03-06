@@ -1,0 +1,124 @@
+@import url("https://fonts.googleapis.com/css2?family=Madimi+One&display=swap");
+
+:root {
+  --color-white: #f4f4f4;
+  --color-green: #50aa61;
+  --color-yellow: #f3c549;
+  --color-black: #121212;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100vh;
+  height: 100dvh;
+  height: 100svh;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Madimi One", serif;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.5;
+  letter-spacing: 1px !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  grid-template-rows: 60px 1fr 60px;
+  grid-template-areas:
+    "asi head"
+    "asi main"
+    "asi foot";
+}
+
+header,
+.aside,
+main,
+footer {
+  height: 100%;
+  width: 100%;
+}
+
+header {
+  grid-area: head;
+  align-items: center;
+  background: linear-gradient(90deg, #e5e5e5 0%, #f5f5f5 50%, #ffffff 100%);
+  box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+  padding-inline: 0.5rem;
+  gap: 1rem;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.aside {
+  grid-area: asi;
+  width: 60px;
+  height: 100%;
+  background: linear-gradient(135deg, #50aa61 0%, #f3c549 50%, #ffff7b 100%);
+  box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
+  transition: all 0.3s ease;
+  font-size: 1.3rem;
+  z-index: 20;
+}
+
+.aside.open {
+  width: 16rem;
+  max-width: 256px;
+}
+
+.aside.closed {
+  width: 60px;
+}
+
+main {
+  grid-area: main;
+  max-height: calc(100vh - 120px);
+  max-height: calc(100dvh - 120px);
+  max-height: calc(100svh - 120px);
+  overflow-y: scroll;
+}
+
+footer {
+  grid-area: foot;
+  background: pink;
+  height: 60px;
+}
+
+p, strong, h2,
+button {
+  font-family: "Madimi One", serif;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 1px !important;
+}
+
+a {
+  text-decoration: none;
+  font-family: "Madimi One", serif;
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: 1px !important;
+}
+
+.dsp-none {
+  display: none;
+}

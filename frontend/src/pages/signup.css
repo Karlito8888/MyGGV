@@ -1,0 +1,22 @@
+.signup-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.signup-widget {
+  width: 100%;
+  max-width: 400px;
+  display: grid;
+  justify-items: center;
+  padding: 1rem;
+  /* background-color: rgba(255, 255, 255, 0.592); */
+  border-radius: 0.5rem;
+  box-shadow: 0 6px 6px rgba(0, 0, 0, 0.2);
+}
+
+.signup-logo {
+  width: 100%;
+}
+

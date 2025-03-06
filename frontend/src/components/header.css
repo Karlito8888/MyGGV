@@ -1,0 +1,14 @@
+.header-infos {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.header-infos span {
+  font-size: 1.125rem;
+  font-weight: 500;
+  font-family: "Madimi One";
+  letter-spacing: 1px;
+}
