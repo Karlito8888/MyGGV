@@ -66,3 +66,38 @@ ON public.profiles
 FOR SELECT
 TO authenticated
 USING (is_public_profile = TRUE);
+
+-- Politique RLS pour la mise à jour des profils par le propriétaire
+CREATE POLICY "Users can update their own profiles"
+ON public.profiles
+FOR UPDATE
+TO authenticated
+USING (auth.uid() = id);
+
+-- Politique RLS pour la lecture des profils par le propriétaire
+CREATE POLICY "Users can read their own profiles"
+ON public.profiles
+FOR SELECT
+TO authenticated
+USING (auth.uid() = id);
+
+-- Politique RLS pour la suppression des profils par le propriétaire
+CREATE POLICY "Users can delete their own profiles"
+ON public.profiles
+FOR DELETE
+TO authenticated
+USING (auth.uid() = id);
+
+-- Politique RLS pour l'insertion de nouveaux profils
+CREATE POLICY "Users can insert their own profiles"
+ON public.profiles
+FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = id);
+
+-- Politique RLS pour les administrateurs (accès complet)
+CREATE POLICY "Admins have full access to profiles"
+ON public.profiles
+FOR ALL
+TO authenticated
+USING (auth.role() = 'admin');

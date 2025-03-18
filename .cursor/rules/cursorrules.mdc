@@ -1,6 +1,7 @@
 ---
 description: 
 globs: 
+alwaysApply: true
 ---
 
 # Prompt pour la création d'une application FARM avec Vite

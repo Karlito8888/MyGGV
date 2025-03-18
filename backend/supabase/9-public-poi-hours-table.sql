@@ -32,7 +32,7 @@ CREATE POLICY "Only admins can create POI"
 ON public.public_poi_hours
 FOR INSERT
 TO authenticated
-WITH CHECK (is_admin());
+WITH CHECK (auth.role() = 'admin');
 
 -- Politique RLS pour la lecture
 CREATE POLICY "All users can read POI"
@@ -46,15 +46,15 @@ CREATE POLICY "Only admins can update POI"
 ON public.public_poi_hours
 FOR UPDATE
 TO authenticated
-USING (is_admin())
-WITH CHECK (is_admin());
+USING (auth.role() = 'admin')
+WITH CHECK (auth.role() = 'admin');
 
 -- Politique RLS pour la suppression
 CREATE POLICY "Only admins can delete POI"
 ON public.public_poi_hours
 FOR DELETE
 TO authenticated
-USING (is_admin());
+USING (auth.role() = 'admin');
 
 -- Création de la fonction pour le trigger
 CREATE OR REPLACE FUNCTION update_public_poi_updated_at()

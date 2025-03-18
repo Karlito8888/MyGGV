@@ -1,6 +1,7 @@
+-- Créer la table business_outside_hours
 CREATE TABLE public.business_outside_hours (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+    business_id UUID NOT NULL REFERENCES public.business_outside(id) ON DELETE CASCADE,
     day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6), -- 0=Dim, 1=Lun, ..., 6=Sam
     opening_time TIME,
     closing_time TIME,
@@ -32,7 +33,7 @@ TO authenticated
 WITH CHECK (
     EXISTS (
         SELECT 1
-        FROM public.businesses
+        FROM public.business_outside
         WHERE id = business_id AND owner_id = auth.uid()
     )
 );
@@ -52,14 +53,14 @@ TO authenticated
 USING (
     EXISTS (
         SELECT 1
-        FROM public.businesses
+        FROM public.business_outside
         WHERE id = business_id AND owner_id = auth.uid()
     )
 )
 WITH CHECK (
     EXISTS (
         SELECT 1
-        FROM public.businesses
+        FROM public.business_outside
         WHERE id = business_id AND owner_id = auth.uid()
     )
 );
@@ -72,7 +73,7 @@ TO authenticated
 USING (
     EXISTS (
         SELECT 1
-        FROM public.businesses
+        FROM public.business_outside
         WHERE id = business_id AND owner_id = auth.uid()
     )
 );

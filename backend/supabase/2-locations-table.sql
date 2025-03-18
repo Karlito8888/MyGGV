@@ -1,3 +1,6 @@
+-- Activer PostGIS si ce n'est pas déjà fait
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 CREATE TABLE public.locations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     block TEXT NOT NULL, -- Numéro de block

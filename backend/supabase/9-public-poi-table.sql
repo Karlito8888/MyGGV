@@ -16,13 +16,7 @@ CREATE POLICY "Only admins can create public_poi"
 ON public.public_poi
 FOR INSERT
 TO authenticated
-WITH CHECK (
-    EXISTS (
-        SELECT 1
-        FROM public.profiles
-        WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-    )
-);
+WITH CHECK (auth.role() = 'admin');
 
 -- Politique RLS pour la lecture
 CREATE POLICY "Authenticated users can read public_poi"
@@ -36,33 +30,15 @@ CREATE POLICY "Only admins can update public_poi"
 ON public.public_poi
 FOR UPDATE
 TO authenticated
-USING (
-    EXISTS (
-        SELECT 1
-        FROM public.profiles
-        WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-    )
-)
-WITH CHECK (
-    EXISTS (
-        SELECT 1
-        FROM public.profiles
-        WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-    )
-);
+USING (auth.role() = 'admin')
+WITH CHECK (auth.role() = 'admin');
 
 -- Politique RLS pour la suppression
 CREATE POLICY "Only admins can delete public_poi"
 ON public.public_poi
 FOR DELETE
 TO authenticated
-USING (
-    EXISTS (
-        SELECT 1
-        FROM public.profiles
-        WHERE profiles.id = auth.uid() AND profiles.role = 'admin'
-    )
-); 
+USING (auth.role() = 'admin'); 
 
 -- Création de la fonction pour le trigger
 CREATE OR REPLACE FUNCTION update_public_poi_updated_at()
