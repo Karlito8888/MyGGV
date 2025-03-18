@@ -10,112 +10,35 @@ import { Feature } from "ol";
 import { Vector as VectorLayer } from "ol/layer";
 import { Vector as VectorSource } from "ol/source";
 import { Style, Icon, Fill, Stroke, Text } from "ol/style";
-import { MdCenterFocusStrong } from "react-icons/md";
-import { supabase } from "../lib/supabase";
+import { MdCenterFocusStrong, MdAddLocation } from "react-icons/md";
 import { useAuth } from "../hooks/useAuth";
 import "./openLayerMap.css";
 import ggvLogo from "../assets/img/ggv.png";
 import { blocks } from "../data/blocks";
-import { Draw } from "ol/interaction";
 import { publicPois } from "../data/public-pois";
+import { supabase } from "../lib/supabase";
+import { MapBrowserEvent } from "ol";
 
-const initialPosition = fromLonLat([120.95134859887523, 14.347872973134175]);
+const INITIAL_POSITION = fromLonLat([120.95134859887523, 14.347872973134175]);
 
 function MapView() {
   const mapRef = useRef<Map | null>(null);
-  const [vectorSource] = useState(new VectorSource()); // Source pour les POI
-  const [clickedFeature, setClickedFeature] = useState<Feature | null>(null);
-  const { role } = useAuth(); // Récupérer le rôle de l'utilisateur
+  const [vectorSource] = useState(new VectorSource());
   const [blocksSource] = useState(new VectorSource());
+  const [isAddingLot, setIsAddingLot] = useState(false);
+  const [isAddingAlignedMarkers, setIsAddingAlignedMarkers] = useState(false);
+  const { role } = useAuth();
+  const [locations, setLocations] = useState<Feature[]>([]);
 
   const handleRecenter = () => {
     if (mapRef.current) {
       const view = mapRef.current.getView();
-      view.setCenter(initialPosition);
+      view.setCenter(INITIAL_POSITION);
       view.setZoom(16.3);
     }
   };
 
-  const addPoiToMap = (
-    longitude: number,
-    latitude: number,
-    name: string,
-    description?: string
-  ) => {
-    console.log("Adding POI to map:", {
-      longitude,
-      latitude,
-      name,
-      description,
-    });
-
-    const feature = new Feature({
-      geometry: new Point(fromLonLat([longitude, latitude])),
-      name: name,
-      description: description || "No description",
-    });
-
-    feature.setStyle(
-      new Style({
-        image: new Icon({
-          src: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-          scale: 1,
-        }),
-      })
-    );
-
-    vectorSource.addFeature(feature);
-  };
-
-  const handleRightClick = async (event: any) => {
-    event.preventDefault(); // Empêcher le menu contextuel par défaut
-
-    // Vérifier si l'utilisateur est admin
-    if (role !== "admin") {
-      return;
-    }
-
-    if (mapRef.current) {
-      // Récupérer les coordonnées du clic
-      const coordinates = mapRef.current.getEventCoordinate(event);
-      const [longitude, latitude] = toLonLat(coordinates);
-
-      // Afficher les coordonnées dans la console
-      console.log("Coordonnées du clic droit :", {
-        longitude: longitude.toFixed(6),
-        latitude: latitude.toFixed(6),
-      });
-
-      // Demander le nom du POI (description optionnelle)
-      const name = prompt("Enter the name of the POI:");
-      if (!name) {
-        alert("Name is required!");
-        return;
-      }
-
-      const description =
-        prompt("Enter the description of the POI (optional):") || undefined;
-
-      // Envoyer les données à Supabase
-      const { data, error } = await supabase
-        .from("poi")
-        .insert([{ name, description, longitude, latitude }])
-        .select();
-
-      if (error) {
-        console.error("Error adding POI to database:", error);
-        alert("Failed to add POI. Check the console for details.");
-      } else if (data) {
-        // Ajouter le POI à la carte
-        addPoiToMap(longitude, latitude, name, description);
-        console.log("POI added successfully:", data);
-        alert("POI added successfully!");
-      }
-    }
-  };
-
-  // Ajouter cette fonction utilitaire
-  function setBlockStyle(feature: Feature, color: string, name: string) {
+  const setBlockStyle = (feature: Feature, color: string, name: string) => {
     feature.setStyle(
       new Style({
         fill: new Fill({ color }),
@@ -128,7 +51,7 @@ function MapView() {
         }),
       })
     );
-  }
+  };
 
   const addBlockToMap = (block: (typeof blocks)[0]) => {
     const feature = new Feature({
@@ -136,89 +59,45 @@ function MapView() {
       name: block.name,
       type: "block",
     });
-
-    // Utiliser la fonction utilitaire
     setBlockStyle(feature, block.color, block.name);
-
     blocksSource.addFeature(feature);
   };
 
   const addPublicPoisToMap = () => {
-    const features: Feature[] = []; // Stocker les features pour pouvoir les mettre à jour plus tard
-
+    const features: Feature[] = [];
     publicPois.forEach((poi) => {
-      console.log("Loading POI:", poi.name, "with icon:", poi.icon);
       const feature = new Feature({
         geometry: new Point(fromLonLat(poi.coords)),
         name: poi.name,
         type: "public",
-        icon: poi.icon, // Stocker l'icône dans les propriétés du feature
+        icon: poi.icon,
       });
-
-      // Créer un style avec une échelle de base plus petite
-      const createIconStyle = (scale: number) =>
-        new Style({
-          image: new Icon({
-            src: poi.icon,
-            scale: scale,
-            anchor: [0.5, 1],
-            anchorXUnits: "fraction",
-            anchorYUnits: "fraction",
-            crossOrigin: "anonymous",
-          }),
-        });
-
-      // Appliquer le style initial avec une petite échelle
-      feature.setStyle(createIconStyle(0.5));
-
-      // Ajouter le feature à la source et à notre tableau
+      feature.setStyle(createIconStyle(poi.icon, 0.5));
       vectorSource.addFeature(feature);
       features.push(feature);
     });
-
     return features;
   };
 
-  // Ajout de la fonction pour afficher le zoom
-  const logCurrentZoom = () => {
-    if (role === "admin" && mapRef.current) {
-      // Vérifier si l'utilisateur est admin
-      const currentZoom = mapRef.current.getView().getZoom();
-      console.log(`Current zoom level: ${currentZoom}`);
-    }
-  };
-
-  useEffect(() => {
-    const vectorLayer = new VectorLayer({
-      source: vectorSource,
-    });
-
-    const blocksLayer = new VectorLayer({
-      source: blocksSource,
-    });
-
-    const map = new Map({
-      target: "map",
-      layers: [
-        new TileLayer({
-          source: new OSM(),
-        }),
-        blocksLayer,
-        vectorLayer,
-      ],
-      view: new View({
-        center: initialPosition,
-        zoom: 16.3,
+  const createIconStyle = (icon: string, scale: number) => {
+    return new Style({
+      image: new Icon({
+        src: icon,
+        scale: scale,
+        anchor: [0.5, 1],
+        anchorXUnits: "fraction",
+        anchorYUnits: "fraction",
+        crossOrigin: "anonymous",
       }),
     });
+  };
 
-    // Ajouter tous les blocks à la carte
-    blocks.forEach(addBlockToMap);
+  const cleanupMap = (map: Map) => {
+    map.setTarget(undefined);
+    mapRef.current = null;
+  };
 
-    // Ajouter les POIs publics et récupérer les features
-    const poiFeatures = addPublicPoisToMap();
-
-    // Fonction pour mettre à jour l'échelle des icônes
+  const setupZoomListener = (map: Map, poiFeatures: Feature[]) => {
     const updateIconScales = () => {
       const zoom = map.getView().getZoom() || 16;
       const newScale = 0.5 + Math.max(0, zoom - 16) * 0.4;
@@ -227,7 +106,7 @@ function MapView() {
         const createIconStyle = (scale: number) =>
           new Style({
             image: new Icon({
-              src: feature.get("icon"), // Utiliser l'icône stockée dans le feature
+              src: feature.get("icon"),
               scale: scale,
               anchor: [0.5, 1],
               anchorXUnits: "fraction",
@@ -239,97 +118,408 @@ function MapView() {
       });
     };
 
-    // Ajouter l'écouteur de zoom
     map.getView().on("change:resolution", updateIconScales);
 
-    // Ajouter l'interaction de dessin uniquement pour les admins
-    if (role === "admin") {
-      const draw = new Draw({
-        source: blocksSource,
-        type: "Polygon",
+    return updateIconScales;
+  };
+
+  const handleAddLot = async (coordinates: number[]) => {
+    const block = prompt("Entrez le numéro du block :");
+    const lot = prompt("Entrez le numéro du lot :");
+
+    if (block && lot) {
+      console.log("Données à insérer :", {
+        coordinates: `POINT(${coordinates[0]} ${coordinates[1]})`,
+        block,
+        lot,
       });
 
-      draw.on("drawend", (event) => {
-        const polygon = event.feature.getGeometry() as Polygon;
-        const coordinates = polygon.getCoordinates();
-        const blockName = prompt("Entrez le nom du block :");
+      const { data, error } = await supabase
+        .from("locations")
+        .insert([
+          {
+            coordinates: `POINT(${coordinates[0]} ${coordinates[1]})`,
+            block,
+            lot,
+          },
+        ])
+        .select();
 
-        if (blockName) {
-          event.feature.set("name", blockName);
-          event.feature.set("type", "block");
+      if (error) {
+        console.error("Erreur lors de l'ajout du lot :", error);
+        alert("Une erreur est survenue lors de l'ajout du lot.");
+      } else {
+        console.log("Lot ajouté avec succès :", data);
+        alert("Lot ajouté avec succès !");
+      }
+    } else {
+      alert("Le numéro du block et du lot sont requis !");
+    }
+  };
 
-          // Utiliser la fonction utilitaire
-          setBlockStyle(event.feature, "#FF0000", blockName);
+  const setupLotAdding = (map: Map) => {
+    map.on("click", (event) => {
+      if (isAddingLot) {
+        const coordinates = toLonLat(event.coordinate);
+        handleAddLot(coordinates);
+        setIsAddingLot(false);
+      }
+    });
+  };
 
-          console.log("Nouveau block créé :", {
-            name: blockName,
-            coords: coordinates[0].map((coord) => toLonLat(coord)),
-          });
-        } else {
-          blocksSource.removeFeature(event.feature);
-          alert("Le nom du block est requis !");
-        }
-      });
+  const fetchLocations = async () => {
+    const { data, error } = await supabase.from("locations").select("*");
+    console.log("Nombre de POI récupérés :", data?.length);
 
-      map.addInteraction(draw);
+    if (error) {
+      console.error("Erreur lors de la récupération des locations :", error);
+      return;
     }
 
-    // Gestion du clic gauche sur les marqueurs
-    map.on("click", (event) => {
-      const feature = map.forEachFeatureAtPixel(
-        event.pixel,
-        (feature) => feature
+    const features = data.map((location) => {
+      const coordinates = location.coordinates.coordinates;
+      const feature = new Feature({
+        geometry: new Point(fromLonLat(coordinates)),
+        block: location.block,
+        lot: location.lot,
+        type: "location",
+        id: location.id,
+        marker_url: location.marker_url,
+      });
+      feature.setStyle(createMarkerStyle(location.marker_url));
+      return feature;
+    });
+
+    setLocations(features);
+  };
+
+  const createMarkerStyle = (markerUrl: string) => {
+    return new Style({
+      image: new Icon({
+        src: markerUrl,
+        scale: 0.5,
+        anchor: [0.5, 1],
+        anchorXUnits: "fraction",
+        anchorYUnits: "fraction",
+        crossOrigin: "anonymous",
+      }),
+    });
+  };
+
+  const handleMarkerClick = async (feature: Feature) => {
+    if (role === "admin") {
+      const locationId = feature.get("id");
+      const currentBlock = feature.get("block");
+      const currentLot = feature.get("lot");
+      const currentMarker = feature.get("marker_url");
+
+      const action = prompt(
+        `Block: ${currentBlock}, Lot: ${currentLot}\nMarqueur actuel: ${currentMarker}\n\nQue souhaitez-vous faire ?\n1. Mettre à jour\n2. Supprimer\n3. Changer le marqueur\n\nEntrez 1, 2 ou 3`
       );
-      if (feature && feature instanceof Feature) {
-        setClickedFeature(feature);
-        const coordinates = (feature.getGeometry() as Point).getCoordinates();
-        const name = feature.get("name");
-        const description = feature.get("description");
-        console.log(`Clicked on ${name}: ${description} at ${coordinates}`);
-      } else {
-        setClickedFeature(null);
+
+      if (action === "1") {
+        const newBlock = prompt(
+          "Entrez le nouveau numéro de block :",
+          currentBlock
+        );
+        const newLot = prompt("Entrez le nouveau numéro de lot :", currentLot);
+
+        if (newBlock && newLot) {
+          const { error } = await supabase
+            .from("locations")
+            .update({ block: newBlock, lot: newLot })
+            .eq("id", locationId);
+
+          if (!error) {
+            // Mettre à jour le marqueur sur la carte
+            feature.set("block", newBlock);
+            feature.set("lot", newLot);
+            alert("Marqueur mis à jour avec succès !");
+          } else {
+            console.error("Erreur lors de la mise à jour du marqueur :", error);
+            alert(
+              "Une erreur est survenue lors de la mise à jour du marqueur."
+            );
+          }
+        } else {
+          alert("Le numéro de block et de lot sont requis !");
+        }
+      } else if (action === "2") {
+        const confirmDelete = window.confirm(
+          "Êtes-vous sûr de vouloir supprimer ce marqueur ?"
+        );
+
+        if (confirmDelete) {
+          const { error } = await supabase
+            .from("locations")
+            .delete()
+            .eq("id", locationId);
+
+          if (!error) {
+            // Supprimer le marqueur de la carte
+            setLocations((prev) =>
+              prev.filter((loc) => loc.get("id") !== locationId)
+            );
+            alert("Marqueur supprimé avec succès !");
+          } else {
+            console.error("Erreur lors de la suppression du marqueur :", error);
+            alert(
+              "Une erreur est survenue lors de la suppression du marqueur."
+            );
+          }
+        }
+      } else if (action === "3") {
+        const newMarker = prompt(
+          "Entrez le nouveau marqueur (ex: /temp-marker.png) :",
+          currentMarker
+        );
+
+        if (newMarker) {
+          const { error } = await supabase
+            .from("locations")
+            .update({ marker_url: newMarker })
+            .eq("id", locationId);
+
+          if (!error) {
+            // Mettre à jour le marqueur sur la carte
+            feature.set("marker_url", newMarker);
+            feature.setStyle(createMarkerStyle(newMarker));
+            alert("Marqueur changé avec succès !");
+          } else {
+            console.error("Erreur lors du changement du marqueur :", error);
+            alert("Une erreur est survenue lors du changement du marqueur.");
+          }
+        } else {
+          alert("Le chemin du marqueur est requis !");
+        }
+      }
+    }
+  };
+
+  const setupAlignedMarkers = (map: Map) => {
+    let markerPositions: number[][] = [];
+
+    map.on("click", (event) => {
+      if (isAddingAlignedMarkers) {
+        const coordinates = toLonLat(event.coordinate);
+
+        // Ajouter un feedback visuel temporaire
+        const tempMarker = new Feature({
+          geometry: new Point(fromLonLat(coordinates)),
+          type: "temp",
+        });
+        tempMarker.setStyle(
+          new Style({
+            image: new Icon({
+              src: "/temp-marker.png",
+              scale: 0.5,
+              anchor: [0.5, 1],
+            }),
+          })
+        );
+        vectorSource.addFeature(tempMarker);
+
+        markerPositions.push(coordinates);
+
+        if (markerPositions.length === 1) {
+          alert("Cliquez sur le point d'arrivée");
+        } else if (markerPositions.length === 2) {
+          const markerCount = prompt(
+            "Combien de marqueurs souhaitez-vous ajouter entre ces deux points ? (0 pour seulement le départ et l'arrivée)",
+            "0"
+          );
+
+          const count = Math.max(0, parseInt(markerCount || "0", 10));
+
+          if (!isNaN(count)) {
+            const block = prompt("Entrez le numéro du block :");
+            const startLot = prompt("Entrez le numéro de lot de départ :");
+            const incrementType = prompt(
+              "Choisissez le type d'incrément :\n1. 1 par 1\n2. 2 par 2 (pairs)\n3. 2 par 2 (impairs)",
+              "1"
+            );
+
+            if (
+              block &&
+              startLot &&
+              !isNaN(parseInt(startLot)) &&
+              incrementType
+            ) {
+              const startNumber = parseInt(startLot);
+              let increment = 1;
+              let startOffset = 0;
+
+              if (incrementType === "2") {
+                increment = 2;
+                startOffset = startNumber % 2 === 0 ? 0 : 1; // Pour les pairs
+              } else if (incrementType === "3") {
+                increment = 2;
+                startOffset = startNumber % 2 === 1 ? 0 : 1; // Pour les impairs
+              }
+
+              const markers = calculateAlignedMarkers(
+                markerPositions[0],
+                markerPositions[1],
+                count
+              );
+              addMarkersToMap(
+                markers,
+                block,
+                startNumber,
+                increment,
+                startOffset
+              );
+            } else {
+              alert(
+                "Toutes les informations sont requises et doivent être valides !"
+              );
+            }
+          } else {
+            alert("Veuillez entrer un nombre valide");
+          }
+
+          // Nettoyer les marqueurs temporaires
+          vectorSource.clear();
+          setIsAddingAlignedMarkers(false);
+          markerPositions = [];
+        }
+      }
+    });
+  };
+
+  const calculateAlignedMarkers = (
+    start: number[],
+    end: number[],
+    count = 0
+  ) => {
+    const markers = [];
+    // Ajouter le premier point
+    markers.push(start);
+
+    // Ajouter les points intermédiaires seulement si count > 0
+    if (count > 0) {
+      for (let i = 1; i <= count; i++) {
+        const fraction = i / (count + 1);
+        const lon = start[0] + (end[0] - start[0]) * fraction;
+        const lat = start[1] + (end[1] - start[1]) * fraction;
+        markers.push([lon, lat]);
+      }
+    }
+
+    // Ajouter le dernier point
+    markers.push(end);
+    return markers;
+  };
+
+  const addMarkersToMap = async (
+    coordinates: number[][],
+    block: string,
+    startLot: number,
+    increment: number,
+    startOffset: number
+  ) => {
+    for (let i = 0; i < coordinates.length; i++) {
+      const lotNumber = startLot + i * increment + i * startOffset;
+      const { error } = await supabase.from("locations").insert([
+        {
+          coordinates: `POINT(${coordinates[i][0]} ${coordinates[i][1]})`,
+          block: block,
+          lot: lotNumber.toString(),
+        },
+      ]);
+
+      if (error) {
+        console.error("Erreur lors de l'ajout du marqueur :", error);
+      }
+    }
+    fetchLocations(); // Rafraîchir les marqueurs affichés
+  };
+
+  useEffect(() => {
+    const map = initializeMap();
+    const updateIconScales = setupMapInteractions(map);
+    fetchLocations();
+    return () => {
+      if (map) {
+        map.getView().un("change:resolution", updateIconScales);
+        cleanupMap(map);
+      }
+    };
+  }, [vectorSource, blocksSource, role, isAddingLot, isAddingAlignedMarkers]);
+
+  useEffect(() => {
+    if (mapRef.current) {
+      const locationLayer = new VectorLayer({
+        source: new VectorSource({
+          features: locations,
+        }),
+      });
+      mapRef.current.addLayer(locationLayer);
+    }
+  }, [locations]);
+
+  const setupMapInteractions = (map: Map) => {
+    blocks.forEach(addBlockToMap);
+    const poiFeatures = addPublicPoisToMap();
+    const updateIconScales = setupZoomListener(map, poiFeatures);
+    if (role === "admin") {
+      setupLotAdding(map);
+      setupAlignedMarkers(map);
+    }
+    setupClickListeners(map);
+    return updateIconScales;
+  };
+
+  const initializeMap = () => {
+    const map = new Map({
+      target: "map",
+      layers: [
+        new TileLayer({ source: new OSM() }),
+        new VectorLayer({ source: blocksSource }),
+        new VectorLayer({ source: vectorSource }),
+      ],
+      view: new View({
+        center: INITIAL_POSITION,
+        zoom: 16.3,
+      }),
+    });
+    mapRef.current = map;
+    return map;
+  };
+
+  const setupClickListeners = (map: Map) => {
+    map.on("click" as any, (event: MapBrowserEvent<UIEvent>) => {
+      const feature = map.forEachFeatureAtPixel(event.pixel, (feature) => {
+        if (feature instanceof Feature) {
+          return feature;
+        }
+        return null;
+      });
+
+      if (feature && feature.get("type") === "location" && role === "admin") {
+        handleMarkerClick(feature);
       }
     });
 
-    // Gestion du clic droit pour ajouter un POI
-    map.getViewport().addEventListener("contextmenu", handleRightClick);
+    // Ajouter l'écouteur pour le clic droit
+    map.on("contextmenu" as any, (event: MapBrowserEvent<UIEvent>) => {
+      const coordinates = toLonLat(event.coordinate);
+      console.log("Coordonnées du clic droit :", coordinates);
+    });
 
-    // Ajouter le listener uniquement si l'utilisateur est admin
     if (role === "admin") {
       map.getView().on("change:resolution", () => {
         logCurrentZoom();
       });
     }
+  };
 
-    mapRef.current = map;
-
-    return () => {
-      map.getView().un("change:resolution", updateIconScales); // Nettoyer l'écouteur
-      map.getViewport().removeEventListener("contextmenu", handleRightClick);
-      map.setTarget(undefined);
-      mapRef.current = null;
-    };
-  }, [vectorSource, blocksSource, role]);
-
-  useEffect(() => {
-    if (mapRef.current) {
-      const map = mapRef.current;
-      map.on("click", (event) => {
-        const feature = map.forEachFeatureAtPixel(
-          event.pixel,
-          (feature) => feature
-        );
-        if (feature && feature.get("type") === "block") {
-          const blockName = feature.get("name");
-          const coordinates = (
-            feature.getGeometry() as Polygon
-          ).getCoordinates();
-          console.log(`Clicked on block ${blockName}`, coordinates);
-          // Vous pouvez afficher une popup ou effectuer d'autres actions ici
-        }
-      });
+  const logCurrentZoom = () => {
+    if (role === "admin" && mapRef.current) {
+      const currentZoom = mapRef.current.getView().getZoom();
+      console.log(`Current zoom level: ${currentZoom}`);
     }
-  }, []);
+  };
 
   return (
     <div className="map-container">
@@ -338,13 +528,28 @@ function MapView() {
         <button onClick={handleRecenter} className="recenter-button">
           <MdCenterFocusStrong className="recenter-icon" />
         </button>
+        {role === "admin" && (
+          <>
+            <button
+              onClick={() => setIsAddingLot(!isAddingLot)}
+              className={`draw-button ${isAddingLot ? "active" : ""}`}
+            >
+              <MdAddLocation />
+              {isAddingLot ? "Annuler l'ajout" : "Ajouter un lot"}
+            </button>
+            <button
+              onClick={() => setIsAddingAlignedMarkers(!isAddingAlignedMarkers)}
+              className={`draw-button ${
+                isAddingAlignedMarkers ? "active" : ""
+              }`}
+            >
+              {isAddingAlignedMarkers
+                ? "Annuler"
+                : "Ajouter des marqueurs alignés"}
+            </button>
+          </>
+        )}
       </div>
-      {clickedFeature && (
-        <div className="popup">
-          <h3>{clickedFeature.get("name")}</h3>
-          <p>{clickedFeature.get("description")}</p>
-        </div>
-      )}
       <img src={ggvLogo} alt="GGV Logo" className="map-logo" />
     </div>
   );

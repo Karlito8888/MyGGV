@@ -39,9 +39,9 @@ export const publicPois = [
     coords: [120.95236, 14.347433],
     icon: "markers/church.png",
   },
-  {
-    name: "Water Tower",
-    coords: [120.952627, 14.34524],
-    icon: "markers/water.png",
-  },
+  // {
+  //   name: "Water Tower",
+  //   coords: [120.952627, 14.34524],
+  //   icon: "markers/water.png",
+  // },
 ];
