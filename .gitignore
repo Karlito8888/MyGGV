@@ -4,6 +4,8 @@
 .env.development
 .env.production
 .env.test
+.env.*
+!.env.example
 
 # Dossiers de dépendances
 node_modules/
@@ -29,6 +31,11 @@ logs/
 # Fichiers de système d'exploitation
 .DS_Store
 Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
 # Fichiers de tests
 coverage/

@@ -1,0 +1,65 @@
+.pending-approval-page {
+  max-width: 500px;
+  width: 90%;
+  margin: 3rem auto;
+  padding: 2.5rem;
+  background: #1a1a1a;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+.pending-approval-page h1 {
+  background: linear-gradient(135deg, #50aa61, #f3c549);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: clamp(1.5rem, 0.875rem + 2vw, 2rem);
+  margin-bottom: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.pending-approval-page p {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.pending-approval-page button {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, #50aa61, #f3c549);
+  color: #000;
+  font-weight: 600;
+  font-size: 1rem;
+  margin-top: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.pending-approval-page button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(80, 170, 97, 0.3);
+}
+
+.pending-approval-page .loading {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1rem;
+  margin: 2rem 0;
+}
+
+.pending-approval-page .rejected {
+  color: #ff4444;
+}
+
+.pending-approval-page .pending-message {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}

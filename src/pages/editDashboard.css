@@ -1,0 +1,70 @@
+/* Inherit all styles from userDashboard.css */
+@import './userDashboard.css';
+
+/* Edit Form Specific Styles */
+.user-dashboard .edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.user-dashboard .edit-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.user-dashboard .edit-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--color-text-dark);
+}
+
+.user-dashboard .edit-form input[type="text"],
+.user-dashboard .edit-form input[type="url"],
+.user-dashboard .edit-form input[type="tel"] {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: var(--transition);
+}
+
+.user-dashboard .edit-form input:focus {
+  outline: none;
+  border-color: var(--color-green);
+}
+
+/* Checkbox Styles */
+.user-dashboard .edit-form .checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.user-dashboard .edit-form input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+/* File Upload Styles */
+.user-dashboard .file-upload-container {
+  margin-top: 1rem;
+}
+
+.user-dashboard .file-upload-container input[type="file"] {
+  display: none;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .user-dashboard .edit-form {
+    padding: 1rem;
+  }
+  
+  .user-dashboard .account-actions {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
