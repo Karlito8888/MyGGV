@@ -6,7 +6,6 @@ import { FaPencil } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 import "./userDashboard.css";
 import { useErrorHandler } from "../hooks/useErrorHandler";
-import { deleteUserAccount } from "../lib/auth/userAuthServices";
 import ggvCoin from "../assets/img/ggv-coin.png";
 import { MdDelete } from "react-icons/md";
 // import { LocationAssociation } from "../components/LocationAssociation";
@@ -46,6 +45,29 @@ interface LocationAssociationType {
     lot: string;
   };
 }
+
+// Fonction déplacée depuis userAuthServices.ts
+const deleteUserAccount = async (userId: string): Promise<boolean> => {
+  try {
+    // Supprimer le profil de la table profiles
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", userId);
+
+    if (profileError) throw profileError;
+
+    // Déconnecter l'utilisateur
+    await supabase.auth.signOut();
+
+    return true;
+  } catch (err) {
+    console.error("Error deleting user account:", err);
+    throw new Error(
+      err instanceof Error ? err.message : "Failed to delete user account"
+    );
+  }
+};
 
 const useProfile = (userId: string | undefined) => {
   const [profile, setProfile] = useState<Profile | null>(null);

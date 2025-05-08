@@ -17,8 +17,6 @@ import { FaPesoSign } from "react-icons/fa6";
 import { IoSearch } from "react-icons/io5";
 import { CiLogout } from "react-icons/ci";
 import { CgGames } from "react-icons/cg";
-import { useSelector } from "react-redux";
-import { RootState } from "../app/store";
 import { supabase } from "../lib/supabase";
 
 import "./aside.css";
@@ -26,8 +24,8 @@ import { useAuth } from "../hooks/useAuth";
 
 function Aside() {
   const [isOpen, setIsOpen] = useState(false);
-  const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
-  const { role } = useAuth();
+  const { user, role } = useAuth();
+  const isLoggedIn = !!user;
 
   return (
     <>

@@ -2,7 +2,7 @@
 
 ## Contexte
 
-Je souhaite créer une application web moderne en utilisant FastAPI pour le backend, React avec Vite pour le frontend, et Supabase comme solution tout-en-un pour la base de données PostgreSQL, l'authentification et les fonctionnalités temps réel. L'application doit être simple, efficace, et facile à maintenir, en respectant les principes DRY (Don't Repeat Yourself) et KISS (Keep It Simple, Stupid). L'objectif est de fournir une expérience utilisateur fluide avec des fonctionnalités clés, sans sur-ingénierie.
+Je souhaite créer une application web moderne en utilisant React avec Vite pour le frontend, et Supabase comme solution tout-en-un pour la base de données PostgreSQL, l'authentification et les fonctionnalités temps réel. L'application doit être simple, efficace, et facile à maintenir, en respectant les principes DRY (Don't Repeat Yourself) et KISS (Keep It Simple, Stupid). L'objectif est de fournir une expérience utilisateur fluide avec des fonctionnalités clés, sans sur-ingénierie.
 
 **Note : Ce projet utilisera exclusivement Supabase pour la gestion de la base de données, l'authentification, et les fonctionnalités temps réel.**
 
@@ -78,12 +78,6 @@ Je souhaite créer une application web moderne en utilisant FastAPI pour le back
 - **Supabase Realtime** pour le chat en temps réel.
 - **CSS natif** pour le style, en privilégiant une approche simple et maintenable.
 
-### Backend
-
-- **FastAPI** pour la création d'API RESTful.
-- **Supabase** comme solution tout-en-un pour la base de données, l'authentification, et les WebSockets.
-- Intégration de **OAuth** (Facebook, etc.) via **Supabase Auth**.
-
 ### Base de données
 
 - **PostgreSQL** via **Supabase** pour stocker les données utilisateurs, les messages du chat, les threads du forum, etc.
@@ -92,7 +86,6 @@ Je souhaite créer une application web moderne en utilisant FastAPI pour le back
 
 ### Déploiement
 
-- Déploiement sur un service cloud (exemple : AWS, DigitalOcean, Heroku).
 - Configuration distincte pour les environnements de développement, test et production.
 
 ---

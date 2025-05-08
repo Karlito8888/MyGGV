@@ -8,8 +8,10 @@ import Signup from "./pages/Signup";
 import OnboardingModals from "./components/OnboardingModals";
 import PendingApprovalPage from "./components/PendingApprovalPage";
 import LocationRequests from "./components/LocationRequests";
+import { useAuth } from "./hooks/useAuth";
 
 function App() {
+  const { role } = useAuth();
   const [session, setSession] = useState<Session | null>(null);
   const [hasApprovedLocation, setHasApprovedLocation] = useState<
     boolean | null
@@ -55,11 +57,11 @@ function App() {
       // Vérifier si l'utilisateur est un admin
       const { data: userData } = await supabase
         .from("profiles")
-        .select("role, display_name, profile_picture_url")
+        .select("display_name, profile_picture_url")
         .eq("id", session.user.id)
         .single();
 
-      const isAdmin = userData?.role === "admin";
+      const isAdmin = role === "admin";
       const hasCompletedProfile = userData && userData.display_name;
       setHasCompletedOnboarding(hasCompletedProfile);
 

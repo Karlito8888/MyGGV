@@ -5,6 +5,7 @@ import { Session } from "@supabase/supabase-js";
 import "./onboardingModals.css";
 import ReactCrop, { Crop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import { useAuth } from "../hooks/useAuth";
 
 // ===== CONFIGURATION =====
 const customStyles = {
@@ -40,6 +41,7 @@ interface OnboardingModalsProps {
  */
 export default function OnboardingModals({ session }: OnboardingModalsProps) {
   // ===== STATE =====
+  const { role } = useAuth();
   // Visibilité des modales
   const [showIntroModal, setShowIntroModal] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -71,13 +73,7 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
       if (!session?.user) return;
 
       // Vérifier si l'utilisateur est un admin
-      const { data: userData } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .single();
-
-      if (userData?.role === "admin") {
+      if (role === "admin") {
         return; // Ne pas afficher les modales pour les admins
       }
 
