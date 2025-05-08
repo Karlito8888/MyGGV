@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-// import { useNavigate } from "react-router-dom";
-// import { useDispatch } from "react-redux";
 import "./signup.css";
 import { supabase } from "../lib/supabase";
 import { Auth } from "@supabase/auth-ui-react";

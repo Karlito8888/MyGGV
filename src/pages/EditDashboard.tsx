@@ -1,25 +1,38 @@
-import { useState } from "react";
-import { supabase } from "../lib/supabase";
+import { useState, useEffect } from "react";
 import { useErrorHandler } from "../hooks/useErrorHandler";
-import { LocationAssociation } from "../components/LocationAssociation";
+// import { LocationAssociation } from "../components/LocationAssociation";
 import { Profile } from "./UserDashboard";
 import "./editDashboard.css";
+import { ImageCropper } from "../components/ImageCropper";
+import { MdAddAPhoto, MdWarning } from "react-icons/md";
+import { IoInformationCircleOutline } from "react-icons/io5";
+import { useImageCrop } from "../hooks/useImageCrop";
+import { useImageUpload } from "../hooks/useImageUpload";
 
+// ===== TYPES =====
 interface EditDashboardProps {
   profile: Profile;
   onUpdate: (updatedFields: Partial<Profile>) => Promise<void>;
   onCancel: () => void;
 }
 
+// ===== MAIN COMPONENT =====
 export const EditDashboard = ({
   profile,
   onUpdate,
   onCancel,
 }: EditDashboardProps) => {
+  // Hooks
   const { handleError } = useErrorHandler();
-  const [uploading, setUploading] = useState(false);
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [croppedImage, setCroppedImage] = useState<File | null>(null);
+  const { imageState, dispatchImage } = useImageCrop();
+  const { handleFileChange, handleCloseCropper, uploadImage } = useImageUpload({
+    onError: (error, message) => handleError(error, message || "Failed to upload profile picture"),
+    onSuccess: async (publicUrl) => {
+      await onUpdate({ profile_picture_url: publicUrl });
+    },
+    currentProfilePictureUrl: profile.profile_picture_url
+  });
+  
   const [formData, setFormData] = useState<Partial<Profile>>({
     display_name: profile.display_name,
     description: profile.description,
@@ -32,161 +45,160 @@ export const EditDashboard = ({
     has_a_business_inside: profile.has_a_business_inside,
     has_a_business_outside: profile.has_a_business_outside,
   });
+  
+  // État pour la modale d'avertissement Facebook
+  const [showFacebookWarning, setShowFacebookWarning] = useState(false);
+  // État pour la modale d'aide Facebook
+  const [showFacebookHelp, setShowFacebookHelp] = useState(false);
 
+  // Fonction pour extraire le nom d'utilisateur Facebook et générer le lien Messenger
+  const extractFacebookUsername = (facebookUrl: string): string | null => {
+    try {
+      // Normaliser l'URL
+      let normalizedUrl = facebookUrl;
+      if (!normalizedUrl.startsWith('http')) {
+        normalizedUrl = `https://${normalizedUrl}`;
+      }
+      
+      const url = new URL(normalizedUrl);
+      
+      // Vérifier si c'est bien une URL Facebook
+      if (!url.hostname.includes('facebook.com')) {
+        return null;
+      }
+      
+      // Extraire le chemin sans les paramètres
+      const path = url.pathname.split('?')[0];
+      
+      // Supprimer les slashes au début et à la fin
+      const cleanPath = path.replace(/^\/|\/$/g, '');
+      
+      // Ignorer certains chemins spéciaux
+      if (['profile.php', 'people', 'pages'].includes(cleanPath.split('/')[0])) {
+        // Pour les URLs comme facebook.com/profile.php?id=123
+        // Nous ne pouvons pas générer un lien Messenger direct
+        return null;
+      }
+      
+      // Retourner le nom d'utilisateur (tout ce qui vient après facebook.com/)
+      return cleanPath || null;
+    } catch (error) {
+      console.error('Error extracting Facebook username:', error);
+      return null;
+    }
+  };
+
+  // Mettre à jour le lien Messenger lorsque le lien Facebook change
+  useEffect(() => {
+    if (formData.facebook) {
+      const username = extractFacebookUsername(formData.facebook);
+      if (username) {
+        // Générer le lien Messenger
+        const messengerUrl = `https://m.me/${username}`;
+        setFormData(prev => ({
+          ...prev,
+          messenger: messengerUrl
+        }));
+      }
+    }
+  }, [formData.facebook]);
+
+  // Event handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
+    
+    // Vérification spéciale pour Facebook
+    if (name === "facebook" && value.includes("/share")) {
+      setShowFacebookWarning(true);
+      return; // Ne pas mettre à jour le champ pour l'instant
+    }
+    
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }));
   };
 
-  const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = async () => {
-      const img = new Image();
-      img.src = reader.result as string;
-
-      await new Promise((resolve) => {
-        img.onload = resolve;
-      });
-
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      canvas.width = 100;
-      canvas.height = 100;
-
-      let sourceWidth, sourceHeight, sourceX, sourceY;
-
-      if (img.width > img.height) {
-        sourceWidth = img.height;
-        sourceHeight = img.height;
-        sourceX = (img.width - img.height) / 2;
-        sourceY = 0;
-      } else {
-        sourceWidth = img.width;
-        sourceHeight = img.width;
-        sourceX = 0;
-        sourceY = (img.height - img.width) / 2;
-      }
-
-      if (ctx) {
-        ctx.drawImage(
-          img,
-          sourceX,
-          sourceY,
-          sourceWidth,
-          sourceHeight,
-          0,
-          0,
-          100,
-          100
-        );
-      }
-
-      canvas.toBlob((blob) => {
-        if (!blob) return;
-        const resizedFile = new File([blob], `profile_${profile.id}.png`, {
-          type: "image/png",
-        });
-        setCroppedImage(resizedFile);
-        setImageSrc(canvas.toDataURL());
-      }, "image/png");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleUpload = async () => {
-    if (!croppedImage || !profile.id) return;
-
-    setUploading(true);
-
-    try {
-      const { data, error } = await supabase.storage
-        .from("avatars")
-        .upload(`profile_${profile.id}`, croppedImage, {
-          cacheControl: "3600",
-          upsert: true,
-        });
-
-      if (error) throw error;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("avatars").getPublicUrl(data.path);
-
-      await onUpdate({ profile_picture_url: publicUrl });
-      setImageSrc(null);
-    } catch (error) {
-      handleError(error, "Failed to upload profile picture");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleSubmit = async () => {
     try {
+      // Vérifier une dernière fois le lien Facebook avant de soumettre
+      if (formData.facebook && formData.facebook.includes("/share")) {
+        setShowFacebookWarning(true);
+        return;
+      }
+      
       await onUpdate(formData);
     } catch (err) {
       handleError(err, "Failed to update profile");
     }
   };
 
+  // Fonction pour fermer la modale et corriger le lien
+  const handleFixFacebookLink = () => {
+    setShowFacebookWarning(false);
+    // Vous pouvez soit effacer le champ, soit suggérer un format correct
+    setFormData(prev => ({
+      ...prev,
+      facebook: ""
+    }));
+  };
+
+  // Render
   return (
-    <div className="user-dashboard">
-      <h2>Edit Profile</h2>
+    <div className="edit-dashboard">
+      <h2>Edit Your Profile</h2>
 
       <div className="edit-form">
-        {/* Photo de profil */}
-        <div className="info-section profile-picture-container">
-          {profile.profile_picture_url && (
-            <img
-              src={profile.profile_picture_url}
-              alt="Profile"
-              className="profile-picture"
-            />
-          )}
-          <div className="file-upload-container">
+        {/* Profile Picture Section */}
+        <div className="info-section">
+          <h3>
+            {profile.profile_picture_url ? "Profile Picture" : "Add Profile Picture"}
+          </h3>
+          <div className="profile-picture-container">
+            {profile.profile_picture_url && (
+              <img
+                src={profile.profile_picture_url}
+                alt="Profile"
+                className="profile-picture"
+              />
+            )}
             <label htmlFor="fileInput" className="button button-primary">
-              {uploading ? "Uploading..." : "Change Profile Picture"}
+              <MdAddAPhoto size={24}/>
             </label>
             <input
               id="fileInput"
               type="file"
               accept="image/*"
-              onChange={handleFileChange}
-              disabled={uploading}
+              onChange={(e) => handleFileChange(e, dispatchImage)}
+              disabled={imageState.uploading}
+              style={{ display: "none" }}
             />
           </div>
         </div>
 
-        {imageSrc && (
-          <div className="info-section">
-            <img
-              src={imageSrc}
-              alt="Profile preview"
-              style={{ width: "100px", height: "100px" }}
-            />
-            <button
-              className="button button-primary"
-              onClick={handleUpload}
-              disabled={uploading}
-            >
-              {uploading ? "Uploading..." : "Upload Image"}
-            </button>
-          </div>
+        {/* Image Cropper Modal */}
+        {imageState.showCropper && imageState.src && (
+          <ImageCropper
+            imgSrc={imageState.src}
+            onCropComplete={(img, crop) => {
+              dispatchImage({ type: "SET_REF", payload: img });
+              dispatchImage({ type: "SET_CROP", payload: crop });
+            }}
+            onClose={() => handleCloseCropper(dispatchImage)}
+            onUpload={() => uploadImage(imageState, dispatchImage, profile.id)}
+            isUploading={imageState.uploading}
+            aspect={1}
+            circularCrop={true}
+            minWidth={100}
+            minHeight={100}
+          />
         )}
 
-        {/* Informations personnelles */}
+        {/* Personal Information */}
         <div className="info-section">
           <h3>Personal Information</h3>
           <div className="form-group">
-            <label>Display Name</label>
+            <label>Display Name :</label>
             <input
               type="text"
               name="display_name"
@@ -195,7 +207,7 @@ export const EditDashboard = ({
             />
           </div>
           <div className="form-group">
-            <label>Description</label>
+            <label>Description :</label>
             <input
               type="text"
               name="description"
@@ -204,7 +216,7 @@ export const EditDashboard = ({
             />
           </div>
           <div className="form-group">
-            <label>Occupation</label>
+            <label>Occupation :</label>
             <input
               type="text"
               name="occupation"
@@ -214,11 +226,11 @@ export const EditDashboard = ({
           </div>
         </div>
 
-        {/* Localisation */}
-        <div className="info-section locations-section">
+        {/* Location */}
+        {/* <div className="info-section locations-section">
           <h3>My Location</h3>
           <LocationAssociation />
-        </div>
+        </div> */}
 
         {/* Services & Business */}
         <div className="info-section">
@@ -263,34 +275,103 @@ export const EditDashboard = ({
         <div className="info-section">
           <h3>Contacts</h3>
           <div className="form-group">
-            <label>Facebook</label>
+            <div className="label-with-info">
+              <label>Facebook:</label>
+              <IoInformationCircleOutline 
+                size={20} 
+                color="#4267B2" 
+                onClick={() => setShowFacebookHelp(true)}
+                className="info-icon"
+                title="How to find your Facebook profile link"
+              />
+            </div>
             <input
               type="text"
               name="facebook"
               value={formData.facebook || ""}
               onChange={handleChange}
+              placeholder="https://www.facebook.com/username"
             />
+            {formData.facebook && !formData.facebook.includes("/share") && !formData.facebook.startsWith("http") && (
+              <small className="form-hint">Tip: add "https://" at the beginning of your link</small>
+            )}
           </div>
+          
+          {/* Messenger field - auto-generated and disabled */}
+          {formData.messenger && (
+            <div className="form-group">
+              <label>Messenger (auto-generated):</label>
+              <input
+                type="text"
+                name="messenger"
+                value={formData.messenger}
+                disabled
+                className="input-disabled"
+              />
+              <small className="form-hint">This Messenger link is automatically generated from your Facebook profile</small>
+            </div>
+          )}
+
+          {/* Facebook Warning Modal */}
+          {showFacebookWarning && (
+            <div className="modal-overlay">
+              <div className="warning-modal">
+                <div className="warning-header">
+                  <MdWarning size={24} color="#f44336" />
+                  <h3>Invalid Facebook Link</h3>
+                </div>
+                <p>
+                  The Facebook link you entered contains "/share", which indicates it's a temporary sharing link and not your personal profile.
+                </p>
+                <p>
+                  Please provide the URL of your personal Facebook profile, which typically looks like:
+                  <br />
+                  <code>https://www.facebook.com/your.username</code>
+                </p>
+                <div className="modal-actions">
+                  <button 
+                    className="button button-primary" 
+                    onClick={handleFixFacebookLink}
+                  >
+                    Fix my link
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* Facebook Help Modal */}
+          {showFacebookHelp && (
+            <div className="modal-overlay">
+              <div className="help-modal">
+                <div className="help-header">
+                  {/* <IoInformationCircleOutline size={24} color="#4267B2" /> */}
+                  <h3>How to Find Your Facebook Profile Link ?</h3>
+                </div>
+                <div className="help-content">
+                  <ol>
+                    <li>Open the Facebook app,</li>
+                    <li>Go to your profile page,</li>
+                    <li>Tap on the "..." button,</li>
+                    <li>Select "Copy profile link",</li>
+                    <li>... and paste it here! 👍</li>
+                  </ol>
+                  {/* <div className="help-note">
+                    <p>Note: Make sure you're sharing your profile link, not a post or photo link.</p>
+                  </div> */}
+                </div>
+                <div className="modal-actions">
+                  <button 
+                    className="button button-primary" 
+                    onClick={() => setShowFacebookHelp(false)}
+                  >
+                    Got it!
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="form-group">
-            <label>Messenger</label>
-            <input
-              type="text"
-              name="messenger"
-              value={formData.messenger || ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="form-group">
-            <label>WhatsApp</label>
-            <input
-              type="text"
-              name="whatsapp"
-              value={formData.whatsapp || ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="form-group">
-            <label>Viber</label>
+            <label>Viber :</label>
             <input
               type="text"
               name="viber"
@@ -298,15 +379,31 @@ export const EditDashboard = ({
               onChange={handleChange}
             />
           </div>
+          <div className="form-group">
+            <label>WhatsApp :</label>
+            <input
+              type="text"
+              name="whatsapp"
+              value={formData.whatsapp || ""}
+              onChange={handleChange}
+            />
+          </div>
         </div>
 
         {/* Actions */}
         <div className="account-actions">
-          <button className="button button-primary" onClick={handleSubmit}>
-            Save Changes
-          </button>
-          <button className="button button-secondary" onClick={onCancel}>
-            Cancel
+          <button 
+            className="button button-primary" 
+            onClick={async () => {
+              try {
+                await handleSubmit();
+                onCancel(); // Utilise la fonction onCancel pour rediriger vers UserDashboard
+              } catch (err) {
+                // L'erreur est déjà gérée dans handleSubmit
+              }
+            }}
+          >
+            OK
           </button>
         </div>
       </div>

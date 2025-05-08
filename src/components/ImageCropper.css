@@ -1,0 +1,114 @@
+/* Styles pour le conteneur principal */
+.image-cropper-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Styles pour la modale */
+.image-cropper-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 120%;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+/* Styles pour ReactModal */
+.ReactModal__Content--after-open {
+  width: 90% !important;
+  max-width: 800px !important;
+  max-height: 90vh !important;
+  padding: 2rem !important;
+  border-radius: 12px !important;
+  background-color: #1a1a1a !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.ReactModal__Overlay--after-open {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(4px) !important;
+  z-index: 1000 !important;
+}
+
+.image-cropper-modal-content {
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  padding: 1rem;
+  max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Styles pour l'indicateur de chargement */
+.loading-indicator {
+  padding: 0.5rem;
+  color: #555;
+  font-size: 0.9rem;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+/* Styles pour l'image à recadrer */
+.ReactCrop {
+  width: 90%;
+  max-width: 500px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Styles pour l'aperçu du recadrage */
+.preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preview-container h4 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #ddd;
+}
+
+.crop-preview {
+  border: 2px solid #ddd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Styles pour le texte d'information */
+.text-sm {
+  font-size: 0.9rem;
+  color: #ddd;
+  text-align: center;
+}
+
+/* Styles pour les boutons de la modale */
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+  gap: 1rem;
+}

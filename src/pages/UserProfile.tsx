@@ -171,6 +171,18 @@ export const UserProfile = () => {
                   </a>
                 )}
 
+                {/* Viber */}
+                {profile.viber && (
+                  <a
+                    href={`viber://add?number=${profile.viber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Contact Viber"
+                  >
+                    <img src={viberLogo} alt="Viber" />
+                  </a>
+                )}
+                
                 {/* WhatsApp */}
                 {profile.whatsapp && (
                   <a
@@ -183,17 +195,6 @@ export const UserProfile = () => {
                   </a>
                 )}
 
-                {/* Viber */}
-                {profile.viber && (
-                  <a
-                    href={`viber://add?number=${profile.viber}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Contact Viber"
-                  >
-                    <img src={viberLogo} alt="Viber" />
-                  </a>
-                )}
               </div>
             </div>
           )}

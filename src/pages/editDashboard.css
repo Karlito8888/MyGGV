@@ -1,27 +1,56 @@
 /* Inherit all styles from userDashboard.css */
-@import './userDashboard.css';
+@import "./userDashboard.css";
 
-/* Edit Form Specific Styles */
-.user-dashboard .edit-form {
+/* ===== LAYOUT ===== */
+.edit-dashboard .edit-form {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.user-dashboard .edit-form .form-group {
+.edit-dashboard .form-group {
   margin-bottom: 1rem;
 }
 
-.user-dashboard .edit-form label {
-  display: block;
-  margin-bottom: 0.5rem;
-  font-weight: 500;
-  color: var(--color-text-dark);
+/* ===== PROFILE PICTURE ===== */
+.edit-dashboard .profile-picture-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 0 !important;
 }
 
-.user-dashboard .edit-form input[type="text"],
-.user-dashboard .edit-form input[type="url"],
-.user-dashboard .edit-form input[type="tel"] {
+.edit-dashboard .profile-picture {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--color-white);
+}
+
+/* ===== BUTTONS ===== */
+.edit-dashboard .button.button-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+}
+
+/* ===== FORM ELEMENTS ===== */
+.edit-dashboard .edit-form label {
+  display: block;
+  margin-bottom: 0.2rem;
+  /* margin-left: 1rem; */
+  font-weight: 500;
+  color: var(--color-green);
+  font-style: italic;
+}
+
+.edit-dashboard .edit-form input[type="text"],
+.edit-dashboard .edit-form input[type="url"],
+.edit-dashboard .edit-form input[type="tel"] {
   width: 100%;
   padding: 0.75rem;
   border: 1px solid var(--color-border);
@@ -30,41 +59,167 @@
   transition: var(--transition);
 }
 
-.user-dashboard .edit-form input:focus {
+.edit-dashboard .edit-form input:focus {
   outline: none;
   border-color: var(--color-green);
 }
 
-/* Checkbox Styles */
-.user-dashboard .edit-form .checkbox-group {
+/* ===== CHECKBOX STYLES ===== */
+.edit-dashboard .edit-form .checkbox-group {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
 }
 
-.user-dashboard .edit-form input[type="checkbox"] {
+.edit-dashboard .edit-form input[type="checkbox"] {
   width: auto;
   margin: 0;
 }
 
-/* File Upload Styles */
-.user-dashboard .file-upload-container {
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 768px) {
+  .edit-dashboard .account-actions {
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 0 !important;
+  }
+}
+
+/* ===== MODAL STYLES ===== */
+.edit-dashboard .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.edit-dashboard .warning-modal {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.edit-dashboard .warning-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.edit-dashboard .warning-header h3 {
+  margin: 0;
+  color: #f44336;
+}
+
+.edit-dashboard .warning-modal p {
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.edit-dashboard .warning-modal code {
+  display: block;
+  background-color: #f5f5f5;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+  font-family: monospace;
+}
+
+.edit-dashboard .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.edit-dashboard .form-hint {
+  display: block;
+  color: #666;
+  font-style: italic;
+  margin-top: 0.25rem;
+  font-size: 0.85rem;
+}
+
+/* Disabled input field */
+.edit-dashboard .input-disabled {
+  background-color: #f5f5f5;
+  color: #666;
+  cursor: not-allowed;
+  border: 1px solid #ddd;
+}
+
+/* Label with info icon */
+.edit-dashboard .label-with-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.edit-dashboard .info-icon {
+  cursor: pointer;
+  margin-bottom: 0.2rem;
+  transition: transform 0.2s ease;
+}
+
+.edit-dashboard .info-icon:hover {
+  transform: scale(1.1);
+}
+
+/* Help Modal */
+.edit-dashboard .help-modal {
+  background-color: var(--color-text-dark);
+  border-radius: 8px;
+  padding: .5rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.edit-dashboard .help-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.edit-dashboard .help-header h3 {
+  margin: 0;
+  color: var(--color-green);
+}
+
+.edit-dashboard .help-content {
+  margin-bottom: 1rem;
+}
+
+.edit-dashboard .help-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.edit-dashboard .help-content li {
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  list-style: decimal;
+}
+
+/* .edit-dashboard .help-note {
+  background-color: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: 4px;
+  border-left: 3px solid #4267b2;
   margin-top: 1rem;
 }
 
-.user-dashboard .file-upload-container input[type="file"] {
-  display: none;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .user-dashboard .edit-form {
-    padding: 1rem;
-  }
-  
-  .user-dashboard .account-actions {
-    flex-direction: column;
-    gap: 1rem;
-  }
-}
+.edit-dashboard .help-note p {
+  margin: 0;
+  font-style: italic;
+} */

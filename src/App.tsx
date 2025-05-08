@@ -112,7 +112,7 @@ function App() {
     }
   };
 
-  if (loading) return <div>Chargement...</div>;
+  if (loading) return <div>Loading...</div>;
 
   return (
     <>
@@ -120,21 +120,21 @@ function App() {
       <Aside />
       {!session && <Signup />}
 
-      {session && !hasCompletedOnboarding && (
+      {session && role !== "admin" && !hasCompletedOnboarding && (
         <OnboardingModals session={session} />
       )}
 
-      {session &&
+      {session && role !== "admin" &&
         hasCompletedOnboarding &&
         hasApprovedLocation === false &&
         hasPendingRequest && <PendingApprovalPage session={session} />}
 
-      {session &&
+      {session && role !== "admin" &&
         hasCompletedOnboarding &&
         hasApprovedLocation === false &&
         !hasPendingRequest && <LocationRequests session={session} />}
 
-      {session && hasCompletedOnboarding && hasApprovedLocation && (
+      {session && (role === "admin" || (hasCompletedOnboarding && hasApprovedLocation)) && (
         <>
           <main>
             <Outlet />

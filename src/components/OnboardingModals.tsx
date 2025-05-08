@@ -3,9 +3,10 @@ import Modal from "react-modal";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import "./onboardingModals.css";
-import ReactCrop, { Crop } from "react-image-crop";
-import "react-image-crop/dist/ReactCrop.css";
+import { ImageCropper } from "./ImageCropper";
 import { useAuth } from "../hooks/useAuth";
+import { useImageCrop } from "../hooks/useImageCrop";
+import { useImageUpload } from "../hooks/useImageUpload";
 
 // ===== CONFIGURATION =====
 const customStyles = {
@@ -54,15 +55,31 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
   const [block, setBlock] = useState("");
   const [lot, setLot] = useState("");
 
-  // Gestion de l'image de profil
-  const [profilePicture, setProfilePicture] = useState<File | null>(null);
-  const [imgSrc, setImgSrc] = useState<string | null>(null);
-  const [imageRef, setImageRef] = useState<HTMLImageElement | null>(null);
-  const [crop, setCrop] = useState<Crop>();
-  const [completedCrop, setCompletedCrop] = useState<Crop>();
-
   // Gestion des erreurs
   const [error, setError] = useState("");
+
+  // Utiliser les hooks pour la gestion de l'image
+  const { imageState, dispatchImage } = useImageCrop();
+  const { handleFileChange, handleCloseCropper, uploadImage } = useImageUpload({
+    onError: (error, message) => {
+      console.error("Error uploading profile picture:", error);
+      setError(message || "Failed to upload profile picture. Please try again.");
+    },
+    onSuccess: async (publicUrl) => {
+      // Mettre à jour le profil
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ profile_picture_url: publicUrl })
+        .eq("id", session?.user?.id);
+
+      if (updateError) throw updateError;
+
+      // Continuer avec le flux d'onboarding
+      setShowProfilePictureModal(false);
+      setShowLocationModal(true);
+    },
+    // Pas besoin de passer currentProfilePictureUrl pour l'onboarding car c'est la première photo
+  });
 
   // ===== EFFECTS =====
   /**
@@ -144,79 +161,16 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
   /**
    * Gère la soumission du formulaire de photo de profil
    */
-  const handleProfilePictureSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!profilePicture || !completedCrop || !imageRef) {
-      setError("Please select and crop a profile picture");
+  const handleProfilePictureSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!imageState.src || !imageState.ref) {
+      setError("Please select a profile picture");
       return;
     }
 
-    try {
-      // Créer un canvas pour le recadrage
-      const canvas = document.createElement("canvas");
-      const scaleX = imageRef.naturalWidth / imageRef.width;
-      const scaleY = imageRef.naturalHeight / imageRef.height;
-      canvas.width = completedCrop.width;
-      canvas.height = completedCrop.height;
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
-        throw new Error("Canvas context is not available");
-      }
-
-      // Dessiner l'image recadrée sur le canvas
-      ctx.drawImage(
-        imageRef,
-        completedCrop.x * scaleX,
-        completedCrop.y * scaleY,
-        completedCrop.width * scaleX,
-        completedCrop.height * scaleY,
-        0,
-        0,
-        completedCrop.width,
-        completedCrop.height
-      );
-
-      // Convertir le canvas en blob
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, "image/jpeg", 0.9);
-      });
-
-      if (!blob) {
-        throw new Error("Failed to create blob from canvas");
-      }
-
-      // Préparer le fichier pour l'upload
-      const fileExt = "jpg";
-      const fileName = `${session?.user?.id}-${Math.random()}.${fileExt}`;
-      const filePath = `profile_pictures/${fileName}`;
-
-      // Upload vers Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, blob);
-
-      if (uploadError) throw uploadError;
-
-      // Récupérer l'URL publique
-      const { data: publicUrl } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath);
-
-      // Mettre à jour le profil
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({ profile_picture_url: publicUrl.publicUrl })
-        .eq("id", session?.user?.id);
-
-      if (updateError) throw updateError;
-
-      // Passer à l'étape suivante
-      setShowProfilePictureModal(false);
-      setShowLocationModal(true);
-    } catch (error) {
-      setError("An error occurred while uploading your profile picture");
-    }
+    // Utiliser un format de nom de fichier standard
+    const fileName = `profile_${session?.user?.id}_${Date.now()}.jpg`;
+    await uploadImage(imageState, dispatchImage, session?.user?.id || '', fileName);
   };
 
   /**
@@ -239,15 +193,16 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
         .single();
 
       if (locationError) {
-        if (locationError.code === 'PGRST116') {
-          setError("This block and lot combination doesn't exist in our system");
+        if (locationError.code === "PGRST116") {
+          setError(
+            "This block and lot combination doesn't exist in our system"
+          );
           return;
         }
         throw locationError;
       }
 
       // Vérifier si cette location a déjà un utilisateur primaire
-      // Ne pas utiliser .single() ici pour éviter l'erreur 406
       const { data: primaryUsers, error: primaryUserError } = await supabase
         .from("profile_location_associations")
         .select("profile_id")
@@ -261,7 +216,7 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
       // S'il y a au moins un utilisateur primaire
       if (primaryUsers && primaryUsers.length > 0) {
         const primaryUser = primaryUsers[0];
-        
+
         // Il y a déjà un utilisateur primaire, créer une demande d'association
         const { error: requestError } = await supabase
           .from("location_association_requests")
@@ -270,15 +225,17 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
               requester_id: session?.user?.id,
               location_id: locationData.id,
               approver_id: primaryUser.profile_id,
-              status: 'pending'
+              status: "pending",
             },
           ]);
 
         if (requestError) throw requestError;
-        
+
         setShowLocationModal(false);
         // Afficher un message indiquant que la demande a été envoyée
-        alert("Your request has been sent to the primary resident of this location. You'll be notified when they approve your request.");
+        alert(
+          "Your request has been sent to the primary resident of this location. You'll be notified when they approve your request."
+        );
       } else {
         // Pas d'utilisateur primaire, créer l'association directement
         const { error: associationError } = await supabase
@@ -288,11 +245,20 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
               profile_id: session?.user?.id,
               location_id: locationData.id,
               is_verified: true,
-              is_primary: true
+              is_primary: true,
             },
           ]);
 
         if (associationError) throw associationError;
+        
+        // Mettre à jour le profil avec main_location_id
+        const { error: profileUpdateError } = await supabase
+          .from("profiles")
+          .update({ main_location_id: locationData.id })
+          .eq("id", session?.user?.id);
+        
+        if (profileUpdateError) throw profileUpdateError;
+        
         setShowLocationModal(false);
       }
     } catch (error) {
@@ -397,36 +363,27 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.addEventListener("load", () => {
-                      setImgSrc(reader.result?.toString() || null);
-                    });
-                    reader.readAsDataURL(file);
-                    setProfilePicture(file);
-                  }
-                }}
+                onChange={(e) => handleFileChange(e, dispatchImage)}
                 className="onboarding-input"
                 required
               />
             </div>
-            {imgSrc && (
+            {imageState.src && (
               <div className="mb-4">
-                <ReactCrop
-                  crop={crop}
-                  onChange={(c) => setCrop(c)}
-                  onComplete={(c) => setCompletedCrop(c)}
-                  aspect={1} // Ratio 1:1 pour une image carrée
-                >
-                  <img
-                    ref={setImageRef}
-                    src={imgSrc}
-                    alt="Preview"
-                    style={{ maxWidth: "100%", maxHeight: "300px" }}
-                  />
-                </ReactCrop>
+                <ImageCropper
+                  imgSrc={imageState.src}
+                  onCropComplete={(img, crop) => {
+                    dispatchImage({ type: 'SET_REF', payload: img });
+                    dispatchImage({ type: 'SET_CROP', payload: crop });
+                  }}
+                  aspect={1}
+                  circularCrop={true}
+                  minWidth={100}
+                  minHeight={100}
+                  onClose={() => handleCloseCropper(dispatchImage)}
+                  onUpload={handleProfilePictureSubmit}
+                  isUploading={imageState.uploading}
+                />
               </div>
             )}
             {error && <div className="onboarding-error">{error}</div>}
@@ -441,8 +398,12 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
               >
                 Back
               </button>
-              <button type="submit" className="onboarding-button">
-                Continue
+              <button 
+                type="submit" 
+                className="onboarding-button"
+                disabled={imageState.uploading}
+              >
+                {imageState.uploading ? "Uploading..." : "Continue"}
               </button>
             </div>
           </form>
