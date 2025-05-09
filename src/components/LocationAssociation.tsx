@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import "./locationAssociation.css"; // Importez le fichier CSS
 
 // Types pour les données manipulées
 interface Location {
