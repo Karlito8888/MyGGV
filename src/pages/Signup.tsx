@@ -68,6 +68,7 @@ export default function Signup() {
             appearance={{ theme: ThemeSupa }}
             providers={["google", "facebook"]}
             view="sign_up"
+            redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined}
           />
         </div>
       </div>
