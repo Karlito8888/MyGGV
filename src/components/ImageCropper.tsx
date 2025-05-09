@@ -8,6 +8,7 @@ import ReactCrop, {
 import "react-image-crop/dist/ReactCrop.css";
 import { cropImageToBlob } from "../utils/imageUtils";
 import "./ImageCropper.css";
+import { toast } from "react-toastify";
 
 interface ImageCropperProps {
   imgSrc: string | null;
@@ -51,33 +52,61 @@ export const ImageCropper = ({
       setIsLoading(true);
       const { width, height } = e.currentTarget;
 
-      // Create a centered crop with the right aspect ratio
-      const initialCrop = centerCrop(
-        makeAspectCrop(
-          {
-            unit: "%",
-            width: 90,
-          },
-          aspect,
+      try {
+        // Create a centered crop with the right aspect ratio
+        const initialCrop = centerCrop(
+          makeAspectCrop(
+            {
+              unit: "%",
+              width: 90,
+            },
+            aspect,
+            width,
+            height
+          ),
           width,
           height
-        ),
-        width,
-        height
-      );
+        );
 
-      setCrop(initialCrop);
-      setImageRef(e.currentTarget);
-      setIsLoading(false);
+        setCrop(initialCrop);
+        setImageRef(e.currentTarget);
+        toast.info(circularCrop 
+          ? "Drag to position and resize the circular crop area" 
+          : "Drag to position and resize the crop area");
+      } catch (error) {
+        console.error("Error initializing crop:", error);
+        toast.error("Failed to initialize image cropper");
+      } finally {
+        setIsLoading(false);
+      }
     },
-    [aspect]
+    [aspect, circularCrop]
   );
 
   const handleCropComplete = (crop: PixelCrop) => {
     if (imageRef) {
+      // Vérifier si la taille du crop est suffisante
+      if (crop.width < minWidth || crop.height < minHeight) {
+        toast.warning(`Crop size too small. Minimum dimensions: ${minWidth}x${minHeight}px`);
+      }
+      
       onCropComplete(imageRef, crop);
       setCompletedCrop(crop);
     }
+  };
+
+  const handleUpload = (e?: React.FormEvent) => {
+    if (!completedCrop) {
+      toast.warning("Please complete cropping before uploading");
+      return;
+    }
+    
+    if (isUploading) {
+      toast.info("Upload in progress, please wait...");
+      return;
+    }
+    
+    onUpload(e);
   };
 
   useEffect(() => {
@@ -103,6 +132,7 @@ export const ImageCropper = ({
         return () => URL.revokeObjectURL(previewUrl);
       } catch (error) {
         console.error("Error generating preview:", error);
+        toast.error("Failed to generate preview");
         setPreview(null);
       }
     };
@@ -139,11 +169,11 @@ export const ImageCropper = ({
             />
           </ReactCrop>
           
-          {/* {circularCrop && (
+          {circularCrop && (
             <p className="text-sm">
               Drag to position and resize the circular crop area
             </p>
-          )} */}
+          )}
           
           {preview && (
             <div className="preview-container">
@@ -166,14 +196,17 @@ export const ImageCropper = ({
         <div className="modal-actions">
           <button 
             className="button button-secondary" 
-            onClick={onClose}
+            onClick={() => {
+              toast.info("Cropping cancelled");
+              onClose();
+            }}
             disabled={isUploading}
           >
             Cancel
           </button>
           <button
             className="button button-primary"
-            onClick={onUpload}
+            onClick={handleUpload}
             disabled={isUploading || !completedCrop}
           >
             {isUploading ? "Uploading..." : "OK"}

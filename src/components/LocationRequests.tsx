@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
+import { toast } from "react-toastify";
 
 interface LocationRequest {
   id: string;
@@ -19,6 +20,27 @@ export default function LocationRequests({ session }: { session: Session }) {
 
   useEffect(() => {
     fetchRequests();
+    
+    // Subscribe to real-time changes for location requests
+    const subscription = supabase
+      .channel('public:location_association_requests')
+      .on('postgres_changes', 
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'location_association_requests',
+          filter: `approver_id=eq.${session.user.id}`
+        }, 
+        () => {
+          toast.info('You have a new location association request');
+          fetchRequests();
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, []);
 
   async function fetchRequests() {
@@ -40,7 +62,10 @@ export default function LocationRequests({ session }: { session: Session }) {
         .eq("approver_id", userId)
         .eq("status", "pending");
 
-      if (error) throw error;
+      if (error) {
+        toast.error("Failed to load location requests");
+        throw error;
+      }
 
       if (data) {
         const formattedRequests = data.map((item: any) => ({
@@ -58,6 +83,10 @@ export default function LocationRequests({ session }: { session: Session }) {
         }));
 
         setRequests(formattedRequests);
+        
+        if (formattedRequests.length > 0 && loading) {
+          toast.info(`You have ${formattedRequests.length} pending location request${formattedRequests.length > 1 ? 's' : ''}`);
+        }
       }
     } catch (error) {
       console.error("Error fetching requests:", error);
@@ -72,13 +101,18 @@ export default function LocationRequests({ session }: { session: Session }) {
     locationId: string
   ) {
     try {
+      toast.info("Processing approval...");
+      
       // Mettre à jour le statut de la demande - cela déclenchera le trigger de notification
       const { error: updateError } = await supabase
         .from("location_association_requests")
         .update({ status: "approved" })
         .eq("id", requestId);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        toast.error("Failed to approve request");
+        throw updateError;
+      }
 
       // Créer l'association
       const { error: associationError } = await supabase
@@ -92,8 +126,13 @@ export default function LocationRequests({ session }: { session: Session }) {
           },
         ]);
 
-      if (associationError) throw associationError;
+      if (associationError) {
+        toast.error("Failed to create location association");
+        throw associationError;
+      }
 
+      toast.success("Request approved successfully");
+      
       // Rafraîchir la liste
       fetchRequests();
     } catch (error) {
@@ -103,14 +142,20 @@ export default function LocationRequests({ session }: { session: Session }) {
 
   async function handleReject(requestId: string) {
     try {
+      toast.info("Processing rejection...");
+      
       // Mettre à jour le statut de la demande - cela déclenchera le trigger de notification
       const { error } = await supabase
         .from("location_association_requests")
         .update({ status: "rejected" })
         .eq("id", requestId);
 
-      if (error) throw error;
+      if (error) {
+        toast.error("Failed to reject request");
+        throw error;
+      }
 
+      toast.success("Request rejected");
       fetchRequests();
     } catch (error) {
       console.error("Error rejecting request:", error);

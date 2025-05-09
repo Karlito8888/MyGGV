@@ -5,7 +5,7 @@ import { FaArrowAltCircleLeft } from "react-icons/fa";
 import { FaPencil } from "react-icons/fa6";
 import { Link } from "react-router-dom";
 import { MdDelete } from "react-icons/md";
-import { useErrorHandler } from "../hooks/useErrorHandler";
+import { toast } from "react-toastify";
 import ggvCoin from "../assets/img/ggv-coin.png";
 import { EditDashboard } from "./EditDashboard";
 import "./userDashboard.css";
@@ -99,6 +99,7 @@ const useProfile = (userId: string | undefined) => {
     } catch (err) {
       console.error("Error fetching profile:", err);
       setError("Failed to fetch profile. Please try again.");
+      toast.error("Failed to fetch profile. Please try again.");
     }
   }, [userId]);
 
@@ -118,10 +119,13 @@ const useProfile = (userId: string | undefined) => {
 
       setProfile(data);
       setError(null);
+      toast.success("Profile updated successfully");
       return data;
     } catch (err) {
       console.error("Error updating profile:", err);
-      setError(err instanceof Error ? err.message : "Failed to update profile");
+      const errorMessage = err instanceof Error ? err.message : "Failed to update profile";
+      setError(errorMessage);
+      toast.error(errorMessage);
       throw err;
     }
   };
@@ -138,7 +142,6 @@ export const UserDashboard = () => {
   // Hooks
   const { user } = useAuth();
   const { profile, error: profileError, updateProfile } = useProfile(user?.id);
-  const { error, handleError } = useErrorHandler();
   
   // State
   const [isEditing, setIsEditing] = useState(false);
@@ -151,10 +154,13 @@ export const UserDashboard = () => {
     if (!user?.id) return;
 
     try {
+      toast.info("Deleting account...");
       await deleteUserAccount(user.id);
+      toast.success("Account deleted successfully. Redirecting...");
       window.location.href = "/";
     } catch (err) {
-      handleError(err, "Failed to delete account");
+      console.error("Error deleting account:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete account");
     }
   };
 
@@ -173,9 +179,9 @@ export const UserDashboard = () => {
       setHasFetchedAssociations(true);
     } catch (err) {
       console.error("Error fetching associations:", err);
-      handleError(err, "Failed to fetch locations");
+      toast.error("Failed to fetch locations");
     }
-  }, [user?.id, hasFetchedAssociations, handleError]);
+  }, [user?.id, hasFetchedAssociations]);
 
   // Effects
   useEffect(() => {
@@ -188,8 +194,8 @@ export const UserDashboard = () => {
 
   // Derived state
   const combinedError = useMemo(
-    () => profileError || error,
-    [profileError, error]
+    () => profileError,
+    [profileError]
   );
 
   // UI helpers
@@ -219,7 +225,12 @@ export const UserDashboard = () => {
         </Link>
         <button
           className="button button-primary"
-          onClick={() => setIsEditing(!isEditing)}
+          onClick={() => {
+            setIsEditing(!isEditing);
+            if (!isEditing) {
+              toast.info("Edit mode activated");
+            }
+          }}
         >
           <FaPencil className="button-icon" />
         </button>
@@ -233,7 +244,10 @@ export const UserDashboard = () => {
         <EditDashboard
           profile={profile!}
           onUpdate={updateProfile}
-          onCancel={() => setIsEditing(false)}
+          onCancel={() => {
+            setIsEditing(false);
+            toast.info("Edit mode cancelled");
+          }}
         />
       ) : (
         <div className="profile-info">
@@ -352,7 +366,10 @@ export const UserDashboard = () => {
       <div className="account-actions">
         <button
           className="button button-danger"
-          onClick={() => setShowDeleteConfirmation(true)}
+          onClick={() => {
+            setShowDeleteConfirmation(true);
+            toast.warning("You are about to delete your account");
+          }}
         >
           <MdDelete className="button-icon" />
           Delete My Account
@@ -368,13 +385,12 @@ export const UserDashboard = () => {
               Are you sure you want to delete your account? This action cannot
               be undone.
             </p>
-            {error && <div className="error-message">{error}</div>}
             <div className="modal-actions">
               <button
                 className="button button-secondary"
                 onClick={() => {
                   setShowDeleteConfirmation(false);
-                  handleError(null, "");
+                  toast.info("Account deletion cancelled");
                 }}
               >
                 Cancel

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useErrorHandler } from "../hooks/useErrorHandler";
+import { toast } from "react-toastify";
 // import { LocationAssociation } from "../components/LocationAssociation";
 import { Profile } from "./UserDashboard";
 import "./editDashboard.css";
@@ -23,12 +23,20 @@ export const EditDashboard = ({
   onCancel,
 }: EditDashboardProps) => {
   // Hooks
-  const { handleError } = useErrorHandler();
   const { imageState, dispatchImage } = useImageCrop();
   const { handleFileChange, handleCloseCropper, uploadImage } = useImageUpload({
-    onError: (error, message) => handleError(error, message || "Failed to upload profile picture"),
+    onError: (error, message) => {
+      console.error("Error uploading profile picture:", error);
+      toast.error(message || "Failed to upload profile picture");
+    },
     onSuccess: async (publicUrl) => {
-      await onUpdate({ profile_picture_url: publicUrl });
+      try {
+        await onUpdate({ profile_picture_url: publicUrl });
+        toast.success("Profile picture updated successfully");
+      } catch (error) {
+        console.error("Error updating profile with new picture:", error);
+        toast.error("Failed to update profile with new picture");
+      }
     },
     currentProfilePictureUrl: profile.profile_picture_url
   });
@@ -84,6 +92,7 @@ export const EditDashboard = ({
       return cleanPath || null;
     } catch (error) {
       console.error('Error extracting Facebook username:', error);
+      toast.error('Invalid Facebook URL format');
       return null;
     }
   };
@@ -99,6 +108,7 @@ export const EditDashboard = ({
           ...prev,
           messenger: messengerUrl
         }));
+        toast.info("Messenger link auto-generated", { autoClose: 2000 });
       }
     }
   }, [formData.facebook]);
@@ -127,9 +137,12 @@ export const EditDashboard = ({
         return;
       }
       
+      toast.info("Updating profile...");
       await onUpdate(formData);
+      toast.success("Profile updated successfully");
     } catch (err) {
-      handleError(err, "Failed to update profile");
+      console.error("Error updating profile:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to update profile");
     }
   };
 
@@ -141,6 +154,7 @@ export const EditDashboard = ({
       ...prev,
       facebook: ""
     }));
+    toast.info("Please enter your personal Facebook profile URL");
   };
 
   // Render
@@ -169,7 +183,12 @@ export const EditDashboard = ({
               id="fileInput"
               type="file"
               accept="image/*"
-              onChange={(e) => handleFileChange(e, dispatchImage)}
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                  handleFileChange(e, dispatchImage);
+                  toast.info("Preparing image for cropping...");
+                }
+              }}
               disabled={imageState.uploading}
               style={{ display: "none" }}
             />
@@ -184,8 +203,14 @@ export const EditDashboard = ({
               dispatchImage({ type: "SET_REF", payload: img });
               dispatchImage({ type: "SET_CROP", payload: crop });
             }}
-            onClose={() => handleCloseCropper(dispatchImage)}
-            onUpload={() => uploadImage(imageState, dispatchImage, profile.id)}
+            onClose={() => {
+              handleCloseCropper(dispatchImage);
+              toast.info("Image cropping cancelled");
+            }}
+            onUpload={() => {
+              toast.info("Uploading profile picture...");
+              uploadImage(imageState, dispatchImage, profile.id);
+            }}
             isUploading={imageState.uploading}
             aspect={1}
             circularCrop={true}
@@ -362,7 +387,10 @@ export const EditDashboard = ({
                 <div className="modal-actions">
                   <button 
                     className="button button-primary" 
-                    onClick={() => setShowFacebookHelp(false)}
+                    onClick={() => {
+                      setShowFacebookHelp(false);
+                      toast.info("Remember to use your personal profile URL, not a sharing link");
+                    }}
                   >
                     Got it!
                   </button>
@@ -397,6 +425,7 @@ export const EditDashboard = ({
             onClick={async () => {
               try {
                 await handleSubmit();
+                toast.success("Profile saved successfully!");
                 onCancel(); // Utilise la fonction onCancel pour rediriger vers UserDashboard
               } catch (err) {
                 // L'erreur est déjà gérée dans handleSubmit

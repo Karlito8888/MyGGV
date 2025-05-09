@@ -9,6 +9,8 @@ import OnboardingModals from "./components/OnboardingModals";
 import PendingApprovalPage from "./components/PendingApprovalPage";
 import LocationRequests from "./components/LocationRequests";
 import { useAuth } from "./hooks/useAuth";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 function App() {
   const { role } = useAuth();
@@ -149,6 +151,20 @@ function App() {
       )}
 
       <footer>{/* Contenu du footer */}</footer>
+
+      {/* Configuration de react-toastify */}
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark" // ou "light" selon votre thème
+      />
     </>
   );
 }

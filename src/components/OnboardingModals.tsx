@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Modal from "react-modal";
 import { supabase } from "../lib/supabase";
@@ -7,6 +8,8 @@ import { ImageCropper } from "./ImageCropper";
 import { useAuth } from "../hooks/useAuth";
 import { useImageCrop } from "../hooks/useImageCrop";
 import { useImageUpload } from "../hooks/useImageUpload";
+import { LocationAssociation } from "./LocationAssociation";
+import { toast } from "react-toastify";
 
 // ===== CONFIGURATION =====
 const customStyles = {
@@ -43,6 +46,7 @@ interface OnboardingModalsProps {
 export default function OnboardingModals({ session }: OnboardingModalsProps) {
   // ===== STATE =====
   const { role } = useAuth();
+  
   // Visibilité des modales
   const [showIntroModal, setShowIntroModal] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -52,18 +56,13 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
   // Données du formulaire
   const [displayName, setDisplayName] = useState("");
   const [fullName, setFullName] = useState("");
-  const [block, setBlock] = useState("");
-  const [lot, setLot] = useState("");
-
-  // Gestion des erreurs
-  const [error, setError] = useState("");
-
+  
   // Utiliser les hooks pour la gestion de l'image
   const { imageState, dispatchImage } = useImageCrop();
   const { handleFileChange, handleCloseCropper, uploadImage } = useImageUpload({
     onError: (error, message) => {
       console.error("Error uploading profile picture:", error);
-      setError(message || "Failed to upload profile picture. Please try again.");
+      toast.error(message || "Failed to upload profile picture. Please try again.");
     },
     onSuccess: async (publicUrl) => {
       // Mettre à jour le profil
@@ -72,14 +71,22 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
         .update({ profile_picture_url: publicUrl })
         .eq("id", session?.user?.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        toast.error("Failed to update profile with new picture");
+        throw updateError;
+      }
 
+      toast.success("Profile picture uploaded successfully!");
+      
       // Continuer avec le flux d'onboarding
       setShowProfilePictureModal(false);
       setShowLocationModal(true);
     },
     // Pas besoin de passer currentProfilePictureUrl pour l'onboarding car c'est la première photo
   });
+
+  // Ajout d'un état pour suivre si une demande d'association a été envoyée
+  const [hasRequestedLocation, setHasRequestedLocation] = useState(false);
 
   // ===== EFFECTS =====
   /**
@@ -120,7 +127,7 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
     };
 
     checkUserProfile();
-  }, [session]);
+  }, [session, role]);
 
   /**
    * Gère le clic sur le bouton OK de la modale d'introduction
@@ -137,7 +144,7 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
   const handleNameSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!displayName.trim() || !fullName.trim()) {
-      setError("Name and full name are required");
+      toast.error("Name and full name are required");
       return;
     }
 
@@ -151,10 +158,12 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
 
       if (error) throw error;
 
+      toast.success("Profile information saved successfully!");
       setShowNameModal(false);
       setShowProfilePictureModal(true);
     } catch (error) {
-      setError("An error occurred while saving your name");
+      console.error("Error saving profile information:", error);
+      toast.error("An error occurred while saving your name");
     }
   };
 
@@ -164,7 +173,7 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
   const handleProfilePictureSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!imageState.src || !imageState.ref) {
-      setError("Please select a profile picture");
+      toast.error("Please select a profile picture");
       return;
     }
 
@@ -174,97 +183,30 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
   };
 
   /**
-   * Gère la soumission du formulaire de localisation
+   * Gère la complétion de l'association de localisation
+   * Cette fonction est appelée quand l'utilisateur a ajouté une localisation directement
    */
-  const handleLocationSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!block.trim() || !lot.trim()) {
-      setError("Block and lot numbers are required");
-      return;
-    }
+  const handleLocationComplete = () => {
+    toast.success("Location added successfully! Redirecting to the app...");
+    setShowLocationModal(false);
+    // Rafraîchir la page pour accéder à l'application
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  };
 
-    try {
-      // Rechercher la localisation existante
-      const { data: locationData, error: locationError } = await supabase
-        .from("locations")
-        .select("id")
-        .eq("block", block.trim())
-        .eq("lot", lot.trim())
-        .single();
-
-      if (locationError) {
-        if (locationError.code === "PGRST116") {
-          setError(
-            "This block and lot combination doesn't exist in our system"
-          );
-          return;
-        }
-        throw locationError;
-      }
-
-      // Vérifier si cette location a déjà un utilisateur primaire
-      const { data: primaryUsers, error: primaryUserError } = await supabase
-        .from("profile_location_associations")
-        .select("profile_id")
-        .eq("location_id", locationData.id)
-        .eq("is_primary", true);
-
-      if (primaryUserError) {
-        throw primaryUserError;
-      }
-
-      // S'il y a au moins un utilisateur primaire
-      if (primaryUsers && primaryUsers.length > 0) {
-        const primaryUser = primaryUsers[0];
-
-        // Il y a déjà un utilisateur primaire, créer une demande d'association
-        const { error: requestError } = await supabase
-          .from("location_association_requests")
-          .insert([
-            {
-              requester_id: session?.user?.id,
-              location_id: locationData.id,
-              approver_id: primaryUser.profile_id,
-              status: "pending",
-            },
-          ]);
-
-        if (requestError) throw requestError;
-
-        setShowLocationModal(false);
-        // Afficher un message indiquant que la demande a été envoyée
-        alert(
-          "Your request has been sent to the primary resident of this location. You'll be notified when they approve your request."
-        );
-      } else {
-        // Pas d'utilisateur primaire, créer l'association directement
-        const { error: associationError } = await supabase
-          .from("profile_location_associations")
-          .insert([
-            {
-              profile_id: session?.user?.id,
-              location_id: locationData.id,
-              is_verified: true,
-              is_primary: true,
-            },
-          ]);
-
-        if (associationError) throw associationError;
-        
-        // Mettre à jour le profil avec main_location_id
-        const { error: profileUpdateError } = await supabase
-          .from("profiles")
-          .update({ main_location_id: locationData.id })
-          .eq("id", session?.user?.id);
-        
-        if (profileUpdateError) throw profileUpdateError;
-        
-        setShowLocationModal(false);
-      }
-    } catch (error) {
-      setError("An error occurred while processing your location");
-      console.error(error);
-    }
+  /**
+   * Gère l'envoi d'une demande d'association
+   * Cette fonction est appelée quand l'utilisateur a envoyé une demande d'association
+   */
+  const handleRequestSent = () => {
+    setHasRequestedLocation(true);
+    toast.info("Your request has been sent to the primary resident. You'll be redirected to a waiting page.");
+    // Ne pas fermer la modale, mais afficher un message d'attente
+    // L'utilisateur sera redirigé vers PendingApprovalPage
+    setTimeout(() => {
+      window.location.reload();
+    }, 3000); // Attendre 3 secondes pour que l'utilisateur puisse lire le message
   };
 
   // ===== RENDER =====
@@ -336,7 +278,6 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
                 required
               />
             </div>
-            {error && <div className="onboarding-error">{error}</div>}
             <button type="submit" className="onboarding-button">
               Continue
             </button>
@@ -386,7 +327,6 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
                 />
               </div>
             )}
-            {error && <div className="onboarding-error">{error}</div>}
             <div className="flex justify-between">
               <button
                 type="button"
@@ -410,7 +350,7 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
         </div>
       </Modal>
 
-      {/* Modale de saisie de la localisation */}
+      {/* Modale de saisie de la localisation avec LocationAssociation */}
       <Modal
         isOpen={showLocationModal}
         style={customStyles}
@@ -424,44 +364,36 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
           <p className="text-gray-400 mb-4">
             Help us locate you in the community.
           </p>
-          <form onSubmit={handleLocationSubmit}>
-            <div className="input-group">
-              <input
-                type="text"
-                value={block}
-                onChange={(e) => setBlock(e.target.value)}
-                placeholder="Enter your block number"
-                className="onboarding-input"
-                required
-              />
+          
+          {hasRequestedLocation ? (
+            <div className="text-center p-4 bg-blue-900/20 rounded-lg mb-4">
+              <h3 className="text-xl font-semibold mb-2">Request Sent!</h3>
+              <p>
+                Your location association request has been sent to the primary resident.
+                You will be redirected to a waiting page. You'll gain full access once
+                your request is approved.
+              </p>
             </div>
-            <div className="input-group">
-              <input
-                type="text"
-                value={lot}
-                onChange={(e) => setLot(e.target.value)}
-                placeholder="Enter your lot number"
-                className="onboarding-input"
-                required
-              />
-            </div>
-            {error && <div className="onboarding-error">{error}</div>}
-            <div className="flex justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowLocationModal(false);
-                  setShowProfilePictureModal(true);
-                }}
-                className="onboarding-button-secondary"
-              >
-                Back
-              </button>
-              <button type="submit" className="onboarding-button">
-                Complete Setup
-              </button>
-            </div>
-          </form>
+          ) : (
+            <LocationAssociation 
+              onLocationAdded={handleLocationComplete}
+              onRequestSent={handleRequestSent}
+            />
+          )}
+          
+          <div className="flex justify-between mt-6">
+            <button
+              type="button"
+              onClick={() => {
+                setShowLocationModal(false);
+                setShowProfilePictureModal(true);
+              }}
+              className="onboarding-button-secondary"
+              disabled={hasRequestedLocation}
+            >
+              Back
+            </button>
+          </div>
         </div>
       </Modal>
     </>
