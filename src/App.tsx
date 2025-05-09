@@ -121,7 +121,6 @@ function App() {
     <>
       <Header />
       <Aside />
-      <InstallPrompt />
       {!session && <Signup />}
 
       {session && role !== "admin" && !hasCompletedOnboarding && (
@@ -141,15 +140,10 @@ function App() {
       {session && (role === "admin" || (hasCompletedOnboarding && hasApprovedLocation)) && (
         <>
           <main>
+            <InstallPrompt />
             <Outlet />
           </main>
         </>
-      )}
-
-      {!session && (
-        <main>
-          <Outlet />
-        </main>
       )}
 
       <footer>{/* Contenu du footer */}</footer>

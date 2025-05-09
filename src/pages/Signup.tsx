@@ -16,7 +16,8 @@ const customStyles: Modal.Styles = {
     left: "50%",
     right: "auto",
     bottom: "auto",
-    marginRight: "-50%",
+    width: "auto",
+    // marginRight: "-50%",
     transform: "translate(-50%, -50%)",
     background:
       "linear-gradient(135deg,rgb(245, 245, 245) 0%,rgb(228, 228, 228) 100%)",

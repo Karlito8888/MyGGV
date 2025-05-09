@@ -2,22 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { toast } from "react-toastify";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import "./locationAssociation.css"; // Importez le fichier CSS
-
-// Types pour les données manipulées
-interface Location {
-  id: string;
-  block: string;
-  lot: string;
-}
+import "./locationAssociation.css";
 
 interface OnboardingLocationAssociationProps {
   onLocationAdded?: () => void;
@@ -35,64 +21,17 @@ export const LocationAssociation = ({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // États pour les données de localisation
-  const [locations, setLocations] = useState<Location[]>([]);
-
   // États pour la sélection de bloc/lot
-  const [blocks, setBlocks] = useState<string[]>([]);
   const [selectedBlock, setSelectedBlock] = useState("");
   const [selectedLot, setSelectedLot] = useState("");
-  const [filteredLots, setFilteredLots] = useState<Location[]>([]);
 
-  // Chargement initial des localisations disponibles
+  // Chargement initial
   useEffect(() => {
     if (user) {
-      fetchLocations();
-    }
-  }, [user]);
-
-  // Filtrage des lots disponibles quand un bloc est sélectionné
-  useEffect(() => {
-    if (selectedBlock) {
-      const lots = locations
-        .filter((loc) => loc.block === selectedBlock)
-        .sort((a, b) => Number(a.lot) - Number(b.lot));
-
-      setFilteredLots(lots);
-      setSelectedLot("");
-    }
-  }, [selectedBlock, locations]);
-
-  /**
-   * Récupère uniquement les données de localisation disponibles
-   */
-  const fetchLocations = async () => {
-    try {
-      setLoading(true);
-
-      // Chargement de toutes les localisations disponibles
-      const { data: locationsData, error: locationsError } = await supabase
-        .from("locations")
-        .select("*")
-        .is("deleted_at", null)
-        .order("block", { ascending: true });
-
-      if (locationsError) throw locationsError;
-
-      // Extraction et tri des blocs uniques
-      const uniqueBlocks = [...new Set(locationsData.map((loc) => loc.block))];
-      const sortedBlocks = uniqueBlocks.sort((a, b) => Number(a) - Number(b));
-
-      // Mise à jour des états avec les données récupérées
-      setLocations(locationsData);
-      setBlocks(sortedBlocks);
-    } catch (error) {
-      console.error("Error loading locations:", error);
-      toast.error('Failed to load locations. Please try again.');
-    } finally {
+      // Simplement marquer comme chargé puisque nous n'avons plus besoin de charger les locations
       setLoading(false);
     }
-  };
+  }, [user]);
 
   /**
    * Vérifie si la localisation a déjà un utilisateur vérifié associé
@@ -176,13 +115,28 @@ export const LocationAssociation = ({
 
   /**
    * Ajoute une association entre l'utilisateur et une localisation
-   * @param locationId ID de la localisation à associer
    */
-  const addAssociation = async (locationId: string) => {
-    if (!user) return;
+  const addAssociation = async () => {
+    if (!user || !selectedBlock || !selectedLot) return;
     setSubmitting(true);
 
     try {
+      // Rechercher l'ID de la localisation correspondant au bloc et au lot saisis
+      const { data: locationData, error: locationError } = await supabase
+        .from("locations")
+        .select("id")
+        .eq("block", selectedBlock)
+        .eq("lot", selectedLot)
+        .single();
+
+      if (locationError || !locationData) {
+        toast.error('This location does not exist. Please check your block and lot numbers.');
+        setSubmitting(false);
+        return;
+      }
+
+      const locationId = locationData.id;
+
       // Vérifier si la localisation a déjà un utilisateur vérifié
       const { hasVerifiedUser, primaryUserId } = await checkLocationAssociation(locationId);
 
@@ -231,58 +185,46 @@ export const LocationAssociation = ({
   return (
     <div className="onboarding-location-association">
       <div className="add-location">
-        {/* Sélection du bloc */}
-        <Select value={selectedBlock} onValueChange={setSelectedBlock} disabled={submitting}>
-          <SelectTrigger className="w-full mb-4">
-            <SelectValue placeholder="Select a block" />
-          </SelectTrigger>
-          <SelectContent>
-            {blocks.map((block) => (
-              <SelectItem key={block} value={block} className="text-lg">
-                Block {block}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* Saisie du bloc */}
+        <div className="input-group">
+          <label className="input-label">Block Number</label>
+          <input
+            type="text"
+            value={selectedBlock}
+            onChange={(e) => {
+              setSelectedBlock(e.target.value);
+              // Réinitialiser le lot quand le bloc change
+              setSelectedLot("");
+            }}
+            placeholder="Enter your block number"
+            className="onboarding-input"
+            disabled={submitting}
+          />
+        </div>
 
-        {/* Sélection du lot (affiché uniquement si un bloc est sélectionné) */}
-        {selectedBlock && (
-          <div className="mt-4">
-            <Select
-              value={selectedLot}
-              onValueChange={setSelectedLot}
-              disabled={filteredLots.length === 0 || submitting}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue
-                  placeholder={
-                    filteredLots.length === 0
-                      ? "No available lots"
-                      : "Select a lot"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredLots.map((lot) => (
-                  <SelectItem key={lot.id} value={lot.id} className="text-lg">
-                    Lot {lot.lot}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Saisie du lot */}
+        <div className="input-group">
+          <label className="input-label">Lot Number</label>
+          <input
+            type="text"
+            value={selectedLot}
+            onChange={(e) => setSelectedLot(e.target.value)}
+            placeholder="Enter your lot number"
+            className="onboarding-input"
+            disabled={submitting}
+          />
+        </div>
 
-            {/* Bouton d'ajout (affiché uniquement si un lot est sélectionné) */}
-            {selectedLot && (
-              <Button
-                className="mt-4 w-full"
-                onClick={() => addAssociation(selectedLot)}
-                disabled={submitting}
-              >
-                {submitting ? "Processing..." : "Confirm this location"}
-              </Button>
-            )}
-          </div>
-        )}
+        {/* Bouton d'ajout */}
+        <div className="button-container">
+          <Button
+            className="w-full"
+            onClick={() => addAssociation()}
+            disabled={submitting || !selectedBlock || !selectedLot}
+          >
+            {submitting ? "Processing..." : "Confirm this location"}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,3 +1,28 @@
+/* Styles pour la modale */
+.image-cropper-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: auto;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+.image-cropper-modal-content {
+  background-color: #1a1a1a;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-width: 90%;
+  height: 100%;
+  overflow-y: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  animation: modalFadeIn 0.3s ease-out;
+}
 /* Styles pour le conteneur principal */
 .image-cropper-container {
   display: flex;
@@ -6,21 +31,6 @@
   gap: 1rem;
 }
 
-/* Styles pour la modale */
-.image-cropper-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 120%;
-  background-color: rgba(0, 0, 0, 0.8);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
 
 /* Styles pour ReactModal */
 .ReactModal__Content--after-open {
@@ -39,16 +49,6 @@
   z-index: 1000 !important;
 }
 
-.image-cropper-modal-content {
-  background-color: #1a1a1a;
-  border-radius: 12px;
-  padding: 1rem;
-  max-width: 90%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  animation: modalFadeIn 0.3s ease-out;
-}
 
 @keyframes modalFadeIn {
   from {
@@ -106,9 +106,19 @@
 }
 
 /* Styles pour les boutons de la modale */
-.modal-actions {
+.image-cropper-modal .modal-actions {
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   margin-top: 1rem;
-  gap: 1rem;
+  gap: 6rem;
+  color: #ddd;
+}
+
+.image-cropper-modal .button {
+  background-color: transparent;
+  color: #ddd;
+  border: 1px solid #ddd;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
 }
