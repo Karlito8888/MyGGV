@@ -11,7 +11,7 @@ import LocationRequests from "./components/LocationRequests";
 import { useAuth } from "./hooks/useAuth";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { InstallPrompt } from "./components/InstallPrompt";
+// import { UpdatePrompt } from "./components/UpdatePrompt";
 
 function App() {
   const { role } = useAuth();
@@ -121,6 +121,7 @@ function App() {
     <>
       <Header />
       <Aside />
+      {/* <UpdatePrompt /> */}
       {!session && <Signup />}
 
       {session && role !== "admin" && !hasCompletedOnboarding && (
@@ -140,7 +141,7 @@ function App() {
       {session && (role === "admin" || (hasCompletedOnboarding && hasApprovedLocation)) && (
         <>
           <main>
-            <InstallPrompt />
+            {/* <InstallPrompt /> */}
             <Outlet />
           </main>
         </>

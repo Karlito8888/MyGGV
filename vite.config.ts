@@ -13,8 +13,9 @@ export default defineConfig({
       manifest: {
         name: "MyGGV",
         short_name: "MyGGV",
-        description: "A community-driven platform connecting users through interactive maps, real-time chat, forums, and local services. Share your location, discover nearby services, and engage with your community in a secure and user-friendly environment.",
-        start_url: "/",
+        description:
+          "A community-driven platform connecting users through interactive maps, real-time chat, forums, and local services. Share your location, discover nearby services, and engage with your community in a secure and user-friendly environment.",
+        start_url: "/home",
         display: "standalone",
         background_color: "#ffffff",
         theme_color: "#50aa61",
@@ -71,8 +72,19 @@ export default defineConfig({
             ],
           },
           {
-            name: "Profil",
-            short_name: "Profil",
+            name: "Home",
+            short_name: "Home",
+            url: "/home",
+            icons: [
+              {
+                src: "/icons/icon-192x192.png",
+                sizes: "192x192",
+              },
+            ],
+          },
+          {
+            name: "Profile",
+            short_name: "Profile",
             url: "/profile",
             icons: [
               {
@@ -80,7 +92,7 @@ export default defineConfig({
                 sizes: "192x192",
               },
             ],
-          }
+          },
         ],
         prefer_related_applications: false,
       },
@@ -91,6 +103,7 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         cleanupOutdatedCaches: true,
+        // cacheId: 'myggv-v1.0.2', // Utilisez votre numéro de version ici
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\.example\.com\/.*/,
