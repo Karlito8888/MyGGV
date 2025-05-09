@@ -14,7 +14,7 @@
   background: white;
   border-radius: 9999px;
   cursor: pointer;
-  margin-top: 20px;
+  margin-top: clamp(0.625rem, -0.1563rem + 2.5vw, 1.25rem);
   margin-inline: auto;
 }
 
@@ -41,8 +41,8 @@
 }
 
 .aside-logo.open img {
-  width: 80px;
-  height: 80px;
+  width: clamp(4.375rem, 3.5938rem + 2.5vw, 5rem);
+  height: clamp(4.375rem, 3.5938rem + 2.5vw, 5rem);
 }
 
 .aside-nav {
@@ -67,7 +67,7 @@
   color: #374151;
   width: 100%;
   max-width: 256px;
-  height: 60px;
+  height: clamp(3.125rem, 2.3438rem + 2.5vw, 3.75rem);
   position: relative;
   overflow: hidden;
 }
