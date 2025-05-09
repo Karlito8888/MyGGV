@@ -1,0 +1,90 @@
+.install-prompt {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 400px;
+  background-color: #2a2a2a;
+  color: var(--color-white);
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+.install-prompt::before {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 50%);
+  transform: rotate(30deg);
+  pointer-events: none;
+}
+
+.install-prompt p {
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: clamp(1rem, 0.75rem + 0.8vw, 1.2rem);
+}
+
+.prompt-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.install-prompt button {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: var(--transition);
+  border: none;
+  font-family: "Madimi One", serif;
+  letter-spacing: 1px;
+}
+
+.install-prompt .install-button {
+  background-color: var(--color-green);
+  color: var(--color-white);
+}
+
+.install-prompt .install-button:hover {
+  background-color: var(--color-green-hover);
+}
+
+.install-prompt .dismiss-button {
+  background-color: transparent;
+  border: 1px solid var(--color-white);
+  color: var(--color-white);
+}
+
+.install-prompt .dismiss-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (max-width: 768px) {
+  .install-prompt {
+    width: 95%;
+    bottom: 10px;
+  }
+}

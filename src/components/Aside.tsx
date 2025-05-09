@@ -18,6 +18,7 @@ import { IoSearch } from "react-icons/io5";
 import { CiLogout } from "react-icons/ci";
 import { CgGames } from "react-icons/cg";
 import { supabase } from "../lib/supabase";
+import ggvLogo from "../assets/logos/ggv-70.png";
 
 import "./aside.css";
 import { useAuth } from "../hooks/useAuth";
@@ -32,7 +33,7 @@ function Aside() {
       <aside className={`aside ${isOpen ? "open" : "closed"}`}>
         <div className="aside-container">
           <div className={`aside-logo ${isOpen ? "open" : "closed"}`}>
-            <img src="/src/assets/logos/ggv-70.png" alt="Logo GGV" />
+            <img src={ggvLogo} alt="Logo GGV" />
           </div>
           <button onClick={() => setIsOpen(!isOpen)} className="aside-toggle">
             {isOpen ? <FiX /> : <FiMenu />}

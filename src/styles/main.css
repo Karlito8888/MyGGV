@@ -90,7 +90,8 @@ header,
 .aside,
 main,
 footer {
-  height: 100%;
+  height: auto;
+  max-height: 100%;
   width: 100%;
 }
 
@@ -108,7 +109,7 @@ header {
 .aside {
   grid-area: asi;
   width: 60px;
-  height: 100%;
+  /* height: 100%; */
   background: linear-gradient(135deg, #50aa61 0%, #f3c549 50%, #ffff7b 100%);
   box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
   transition: all 0.3s ease;
@@ -118,10 +119,12 @@ header {
 
 .aside.open {
   width: 16rem;
+  max-height: 100%;
   max-width: 256px;
 }
 
 .aside.closed {
+  max-height: 100%;
   width: 60px;
 }
 

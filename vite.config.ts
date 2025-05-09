@@ -13,11 +13,11 @@ export default defineConfig({
       manifest: {
         name: "MyGGV",
         short_name: "MyGGV",
-        description: "Description de votre application",
+        description: "A community-driven platform connecting users through interactive maps, real-time chat, forums, and local services. Share your location, discover nearby services, and engage with your community in a secure and user-friendly environment.",
         start_url: "/",
         display: "standalone",
         background_color: "#ffffff",
-        theme_color: "#000000",
+        theme_color: "#50aa61",
         orientation: "portrait-primary",
         lang: "en",
         icons: [
@@ -66,23 +66,35 @@ export default defineConfig({
         //     label: "Capture d'écran principale",
         //   },
         // ],
-        // shortcuts: [
-        //   {
-        //     name: "Accueil",
-        //     short_name: "Accueil",
-        //     url: "/",
-        //     icons: [
-        //       {
-        //         src: "/icons/icon-192x192.png",
-        //         sizes: "192x192",
-        //       },
-        //     ],
-        //   },
-        // ],
+        shortcuts: [
+          {
+            name: "Accueil",
+            short_name: "Accueil",
+            url: "/",
+            icons: [
+              {
+                src: "/src/assets/logos/icon-192x192.png",
+                sizes: "192x192",
+              },
+            ],
+          },
+          {
+            name: "Profil",
+            short_name: "Profil",
+            url: "/profile",
+            icons: [
+              {
+                src: "/src/assets/logos/icon-192x192.png",
+                sizes: "192x192",
+              },
+            ],
+          }
+        ],
+        prefer_related_applications: false,
       },
       manifestFilename: "manifest.webmanifest",
       includeManifestIcons: true,
-      registerType: "autoUpdate",
+      registerType: "prompt",
       workbox: {
         clientsClaim: true,
         skipWaiting: true,
@@ -118,7 +130,7 @@ export default defineConfig({
         type: "module",
         navigateFallback: "index.html",
       },
-      includeAssets: ["/icons/*.png", "/fonts/*.woff2"],
+      includeAssets: ["**/*"],
       strategies: "generateSW",
       minify: true,
       mode: "production",
