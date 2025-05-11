@@ -44,7 +44,10 @@ export default function Signup() {
       
       // Rediriger vers la page d'accueil après connexion réussie
       if (session) {
-        window.location.href = '/home';
+        // Utiliser l'API History au lieu de window.location pour éviter le hashtag
+        window.history.pushState({}, '', '/home');
+        // Déclencher un événement de navigation pour que React Router détecte le changement
+        window.dispatchEvent(new Event('popstate'));
       }
     };
 
@@ -75,6 +78,9 @@ export default function Signup() {
             providers={["google", "facebook"]}
             view="sign_up"
             redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/home` : undefined}
+            queryParams={{
+              skipBrowserRedirect: 'true'
+            }}
           />
         </div>
       </div>

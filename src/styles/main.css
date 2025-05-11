@@ -55,10 +55,11 @@ html,
 body,
 #root {
   height: 100vh;
-  height: 100dvh;
-  height: 100svh;
+  height: 100dvh; /* Dynamic viewport height */
+  height: 100svh; /* Small viewport height */
   margin: 0;
   padding: 0;
+  overflow: hidden; /* Empêche le défilement au niveau du body */
 }
 
 html {
@@ -84,6 +85,7 @@ body {
     "asi head"
     "asi main"
     "asi foot";
+  min-height: 100%;
 }
 
 header,
@@ -142,7 +144,7 @@ main {
   max-height: calc(100vh - 120px);
   max-height: calc(100dvh - 120px);
   max-height: calc(100svh - 120px);
-  overflow-y: scroll;
+  overflow-y: auto; /* auto au lieu de scroll */
   overflow-x: hidden;
 }
 
@@ -238,5 +240,25 @@ a {
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Styles pour iOS PWA */
+@supports (-webkit-touch-callout: none) {
+  html,
+  body,
+  #root {
+    /* Hauteur pour iOS */
+    height: -webkit-fill-available;
+  }
+  
+  #root {
+    min-height: -webkit-fill-available;
+  }
+  
+  /* Gestion des zones sécurisées pour les appareils avec encoche */
+  main {
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-top: env(safe-area-inset-top);
   }
 }

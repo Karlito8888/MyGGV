@@ -16,7 +16,7 @@ export default defineConfig({
         description:
           "A community-driven platform connecting users through interactive maps, real-time chat, forums, and local services. Share your location, discover nearby services, and engage with your community in a secure and user-friendly environment.",
         start_url: "/home",
-        display: "standalone",
+        display: "standalone", // Ceci est important pour le mode plein écran
         background_color: "#ffffff",
         theme_color: "#50aa61",
         orientation: "portrait-primary",
