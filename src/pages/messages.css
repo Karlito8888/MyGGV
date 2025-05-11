@@ -28,7 +28,7 @@
 }
 
 .tab-button.active::after {
-  content: '';
+  content: "";
   position: absolute;
   bottom: -1px;
   left: 0;
@@ -37,7 +37,7 @@
   background-color: var(--color-green);
 }
 
-.tab-content {
+.messages-container.tab-content {
   background-color: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
   padding: 1rem;
@@ -50,16 +50,16 @@
     flex-direction: column;
     border-bottom: none;
   }
-  
+
   .tab-button {
     border-bottom: 1px solid var(--color-yellow);
     text-align: left;
   }
-  
+
   .tab-button.active::after {
     display: none;
   }
-  
+
   .tab-button.active {
     background-color: rgba(80, 170, 97, 0.2);
   }

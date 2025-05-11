@@ -76,7 +76,7 @@ export const UserProfile = () => {
                     alt="Profile"
                   />
                   <AvatarFallback className="bg-secondary font-bold">
-                    {profile.username?.charAt(0).toUpperCase() || "U"}
+                    {profile.display_name?.charAt(0).toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
               )}
