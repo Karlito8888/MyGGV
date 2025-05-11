@@ -86,7 +86,7 @@ body {
     "asi head"
     "asi main"
     "asi foot";
-  min-height: 100%;
+  /* min-height: 100%; */
 }
 
 /* header,
@@ -147,7 +147,7 @@ main {
   grid-area: main;
   /* display: flex;
   flex-direction: column; */
-  height: 100%;
+  height: auto;
   /* min-height: calc(100vh - 120px);
   min-height: calc(100dvh - 120px);
   min-height: calc(100svh - 120px);
@@ -161,7 +161,7 @@ main {
 footer {
   grid-area: foot;
   background: pink;
-  height: 60px;
+  /* height: 60px; */
 }
 
 p, strong, h2,
@@ -267,10 +267,10 @@ a {
   }
   
   /* Gestion des zones sécurisées pour les appareils avec encoche */
-  main {
+  /* main {
     padding-bottom: env(safe-area-inset-bottom);
     padding-top: env(safe-area-inset-top);
-  }
+  } */
 }
 
 /* Pour iOS spécifiquement */
@@ -285,9 +285,9 @@ a {
     top: 0;
     left: 0;
   }
-  main {
+  /* main {
     min-height: -webkit-fill-available;
     max-height: -webkit-fill-available;
     flex: 1;
-  }
+  } */
 }
