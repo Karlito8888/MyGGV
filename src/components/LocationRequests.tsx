@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Session } from "@supabase/supabase-js";
 import { toast } from "react-toastify";
+import { ImCheckboxChecked, ImCross } from "react-icons/im";
+import { useNotifications } from "../hooks/useNotifications";
 
 interface LocationRequest {
   id: string;
@@ -17,6 +19,7 @@ interface LocationRequest {
 export default function LocationRequests({ session }: { session: Session }) {
   const [requests, setRequests] = useState<LocationRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const { markAsRead, notifications } = useNotifications();
 
   useEffect(() => {
     fetchRequests();
@@ -42,6 +45,17 @@ export default function LocationRequests({ session }: { session: Session }) {
       supabase.removeChannel(subscription);
     };
   }, []);
+
+  // Marquer les notifications liées aux demandes de localisation comme lues
+  useEffect(() => {
+    const locationRequestNotifications = notifications.filter(
+      n => n.type === 'location_request' && !n.is_read
+    );
+    
+    locationRequestNotifications.forEach(notification => {
+      markAsRead(notification.id);
+    });
+  }, [notifications, markAsRead]);
 
   async function fetchRequests() {
     try {
@@ -166,7 +180,7 @@ export default function LocationRequests({ session }: { session: Session }) {
 
   return (
     <div className="location-requests">
-      <h2>Location Association Requests</h2>
+      {/* <h2>Location Association Requests</h2> */}
 
       {requests.length === 0 ? (
         <p>No pending requests</p>
@@ -180,6 +194,12 @@ export default function LocationRequests({ session }: { session: Session }) {
               </div>
               <div className="request-actions">
                 <button
+                  onClick={() => handleReject(request.id)}
+                  className="reject-button"
+                >
+                  <ImCross />
+                </button>
+                <button
                   onClick={() =>
                     handleApprove(
                       request.id,
@@ -189,13 +209,7 @@ export default function LocationRequests({ session }: { session: Session }) {
                   }
                   className="approve-button"
                 >
-                  Approve
-                </button>
-                <button
-                  onClick={() => handleReject(request.id)}
-                  className="reject-button"
-                >
-                  Reject
+                  <ImCheckboxChecked />
                 </button>
               </div>
             </li>

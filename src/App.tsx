@@ -7,7 +7,6 @@ import Aside from "./components/Aside";
 import Signup from "./pages/Signup";
 import OnboardingModals from "./components/OnboardingModals";
 import PendingApprovalPage from "./components/PendingApprovalPage";
-import LocationRequests from "./components/LocationRequests";
 import { useAuth } from "./hooks/useAuth";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -137,11 +136,6 @@ function App() {
         hasCompletedOnboarding &&
         hasApprovedLocation === false &&
         hasPendingRequest && <PendingApprovalPage session={session} />}
-
-      {session && role !== "admin" &&
-        hasCompletedOnboarding &&
-        hasApprovedLocation === false &&
-        !hasPendingRequest && <LocationRequests session={session} />}
 
       {session && (role === "admin" || (hasCompletedOnboarding && hasApprovedLocation)) && (
         <>

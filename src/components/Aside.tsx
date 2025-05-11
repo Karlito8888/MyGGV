@@ -22,11 +22,16 @@ import ggvLogo from "../assets/logos/ggv-70.png";
 
 import "./aside.css";
 import { useAuth } from "../hooks/useAuth";
+import { useNotifications } from "../hooks/useNotifications";
 
 function Aside() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, role } = useAuth();
   const isLoggedIn = !!user;
+  const { unreadCount } = useNotifications();
+  
+  // Filtrer les notifications liées aux messages
+  const hasMessageNotifications = unreadCount > 0;
 
   return (
     <>
@@ -55,11 +60,16 @@ function Aside() {
                   `nav-link ${isActive ? "active" : ""}`
                 }
               >
-                {isOpen ? (
-                  <span>Messages</span>
-                ) : (
-                  <FiMessageSquare className="nav-icon" />
-                )}
+                <div className="nav-icon-container">
+                  {isOpen ? (
+                    <span>Messages</span>
+                  ) : (
+                    <FiMessageSquare className="nav-icon" />
+                  )}
+                  {hasMessageNotifications && (
+                    <span className="notification-badge">{unreadCount}</span>
+                  )}
+                </div>
               </NavLink>
               <NavLink
                 to="/infos"

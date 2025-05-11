@@ -89,14 +89,6 @@ body {
   /* min-height: 100%; */
 }
 
-/* header,
-.aside,
-main,
-footer {
-  height: 100%;
-  width: 100%;
-} */
-
 header {
   grid-area: head;
   height: 60px;
@@ -145,23 +137,25 @@ header {
 
 main {
   grid-area: main;
-  /* display: flex;
-  flex-direction: column; */
   height: auto;
-  /* min-height: calc(100vh - 120px);
-  min-height: calc(100dvh - 120px);
-  min-height: calc(100svh - 120px);
-  max-height: calc(100vh - 120px);
-  max-height: calc(100dvh - 120px);
-  max-height: calc(100svh - 120px); */
   overflow-y: auto;
   overflow-x: hidden;
+  background-color: #2a2a2a;
+  background-image: radial-gradient(
+      circle at 10% 20%,
+      rgba(255, 255, 255, 0.05) 0%,
+      transparent 20%
+    ),
+    radial-gradient(
+      circle at 90% 80%,
+      rgba(255, 255, 255, 0.05) 0%,
+      transparent 20%
+    );
 }
 
 footer {
   grid-area: foot;
   background: pink;
-  /* height: 60px; */
 }
 
 p, strong, h2,

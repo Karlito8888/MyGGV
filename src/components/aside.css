@@ -70,6 +70,9 @@
   height: clamp(3.125rem, 2.3438rem + 2.5vw, 3.75rem);
   position: relative;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .nav-link:hover {
@@ -101,22 +104,74 @@
   /* background-color: green; */
 }
 
+.nav-icon-container {
+  position: relative;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .nav-icon {
   display: block;
-  margin: 0 auto;
   width: 2rem;
   height: 2rem;
 }
 
 .nav-link-button {
-  /* Copiez ici les styles de .nav-link */
-  font-size: 1.3rem;
-  font-family: "Madimi One", serif;
-  font-weight: 400;
-  font-style: normal;
   color: #374151;
+  width: 100%;
+  max-width: 256px;
+  height: clamp(3.125rem, 2.3438rem + 2.5vw, 3.75rem);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   background: none;
   border: none;
   cursor: pointer;
-  /* Ajoutez d'autres styles si nécessaire */
+  padding: 0;
+  font-size: 1rem;
+}
+
+.nav-link-button:hover {
+  color: var(--color-primary, #50aa61);
+  background-color: rgba(80, 170, 97, 0.1);
+}
+
+/* Assurer que le span à l'intérieur du bouton est aligné correctement */
+.nav-link-button span {
+  display: block;
+  text-align: center;
+  width: 100%;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: var(--color-red, #ff4757);
+  color: white;
+  font-size: 0.7rem;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.aside.closed .notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+}
+
+.aside.open .notification-badge {
+  position: relative;
+  top: 0;
+  right: 0;
+  margin-left: 8px;
+  font-size: 0.8rem;
 }

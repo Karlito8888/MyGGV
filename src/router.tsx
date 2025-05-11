@@ -3,6 +3,7 @@ import App from "./App";
 import Home from "./pages/Home";
 import { UserDashboard } from "./pages/UserDashboard";
 import { UserProfile } from "./pages/UserProfile";
+import Messages from "./pages/Messages";
 
 export const router = createBrowserRouter([
   {
@@ -25,6 +26,10 @@ export const router = createBrowserRouter([
       {
         path: "dashboard",
         element: <UserDashboard />,
+      },
+      {
+        path: "messages",
+        element: <Messages />,
       },
     ],
   },

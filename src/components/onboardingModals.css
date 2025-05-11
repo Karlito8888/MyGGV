@@ -31,6 +31,10 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+.onboarding-modal .text-center {
+  margin-top: 1rem;
+}
+
 .onboarding-button {
   width: auto;
   padding: 1rem;

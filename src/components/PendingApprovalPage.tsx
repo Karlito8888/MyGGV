@@ -102,7 +102,7 @@ export default function PendingApprovalPage({ session }: { session: Session }) {
   
   return (
     <div className="pending-approval-page">
-      <h1>Pending Approval Request</h1>
+      <h2>Pending Approval Request</h2>
       <p>Your location association request is pending approval from the primary owner.</p>
       <div className="pending-message">
         <p>This page will automatically refresh once your request is approved.</p>

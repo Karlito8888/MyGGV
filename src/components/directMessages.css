@@ -1,0 +1,179 @@
+/* Styles communs */
+.direct-messages, .live-chat {
+  display: flex;
+  height: 70vh;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Styles pour les conversations et les salles de chat */
+.conversations-list, .chat-rooms {
+  width: 30%;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  overflow-y: auto;
+  background-color: rgba(18, 18, 18, 0.5);
+}
+
+.conversations-list h3, .chat-rooms h3 {
+  padding: 1rem;
+  margin: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-yellow);
+}
+
+.conversation-item, .room-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--color-white);
+}
+
+.conversation-item.active, .room-item.active {
+  background-color: rgba(80, 170, 97, 0.2);
+  font-weight: bold;
+}
+
+.conversation-item:hover, .room-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.unread-badge {
+  background-color: var(--color-green);
+  color: var(--color-white);
+  border-radius: 50%;
+  min-width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+}
+
+/* Styles pour la zone de messages */
+.messages-area, .chat-area {
+  width: 70%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: bold;
+  background-color: rgba(18, 18, 18, 0.3);
+  color: var(--color-yellow);
+}
+
+.messages-list, .chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.select-conversation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--color-white);
+  opacity: 0.7;
+}
+
+/* Styles pour les bulles de message */
+.message-bubble, .chat-bubble {
+  max-width: 70%;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-radius: 1rem;
+  position: relative;
+}
+
+.message-bubble.sent, .chat-bubble.sent {
+  align-self: flex-end;
+  background-color: rgba(80, 170, 97, 0.3);
+  border-bottom-right-radius: 0.25rem;
+}
+
+.message-bubble.received, .chat-bubble.received {
+  align-self: flex-start;
+  background-color: rgba(243, 197, 73, 0.2);
+  border-bottom-left-radius: 0.25rem;
+}
+
+.message-content {
+  word-break: break-word;
+}
+
+.message-meta, .message-time {
+  font-size: 0.75rem;
+  color: rgba(244, 244, 244, 0.6);
+  margin-top: 0.25rem;
+  text-align: right;
+}
+
+.message-sender {
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+  color: var(--color-yellow);
+}
+
+/* Styles pour la zone de saisie */
+.message-input, .chat-input {
+  display: flex;
+  padding: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(18, 18, 18, 0.3);
+}
+
+.message-input input, .chat-input input {
+  flex: 1;
+  padding: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.5rem;
+  margin-right: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--color-white);
+}
+
+.message-input button, .chat-input button {
+  padding: 0.5rem 1rem;
+  background-color: var(--color-green);
+  color: var(--color-white);
+  border: none;
+  border-radius: 1.5rem;
+  cursor: pointer;
+}
+
+.message-input button:hover, .chat-input button:hover {
+  background-color: rgba(80, 170, 97, 0.8);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .direct-messages, .live-chat {
+    flex-direction: column;
+    height: 80vh;
+  }
+  
+  .conversations-list, .chat-rooms, .messages-area, .chat-area {
+    width: 100%;
+  }
+  
+  .conversations-list, .chat-rooms {
+    height: 30%;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+  
+  .messages-area, .chat-area {
+    height: 70%;
+  }
+}
+ 
