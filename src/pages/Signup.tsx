@@ -41,6 +41,11 @@ export default function Signup() {
     const handleAuthStateChange = (_event: string, session: Session | null) => {
       setSession(session);
       setModalIsOpen(!session);
+      
+      // Rediriger vers la page d'accueil après connexion réussie
+      if (session) {
+        window.location.href = '/home';
+      }
     };
 
     const {
@@ -69,7 +74,7 @@ export default function Signup() {
             appearance={{ theme: ThemeSupa }}
             providers={["google", "facebook"]}
             view="sign_up"
-            redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined}
+            redirectTo={typeof window !== 'undefined' ? `${window.location.origin}/home` : undefined}
           />
         </div>
       </div>

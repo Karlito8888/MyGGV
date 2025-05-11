@@ -33,6 +33,11 @@ function App() {
       setSession(session);
       if (session) {
         checkUserStatus(session);
+        // Rediriger vers /home si l'utilisateur vient de se connecter
+        const currentPath = window.location.pathname;
+        if (currentPath === '/' || currentPath === '/signup') {
+          window.location.href = '/home';
+        }
       } else {
         setLoading(false);
       }
