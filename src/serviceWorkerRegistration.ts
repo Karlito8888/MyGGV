@@ -7,35 +7,29 @@ export function register() {
       
       navigator.serviceWorker.register(swUrl)
         .then(registration => {
-          // Vérifier les mises à jour lors de l'enregistrement
+          // Vérifier les mises à jour périodiquement
+          setInterval(() => {
+            registration.update();
+          }, 60 * 60 * 1000); // Vérifier toutes les heures
+          
           registration.onupdatefound = () => {
             const installingWorker = registration.installing;
             if (installingWorker == null) {
               return;
             }
-            
             installingWorker.onstatechange = () => {
               if (installingWorker.state === 'installed') {
                 if (navigator.serviceWorker.controller) {
                   // Une nouvelle version est disponible
                   console.log('New content is available; please refresh.');
-                  
-                  // Déclencher un événement personnalisé pour notifier l'application
-                  window.dispatchEvent(
-                    new CustomEvent('sw-update-found', { detail: { worker: installingWorker } })
-                  );
+                  // Vous pouvez afficher une notification à l'utilisateur ici
                 } else {
-                  // Première installation
+                  // Le contenu est mis en cache pour une utilisation hors ligne
                   console.log('Content is cached for offline use.');
                 }
               }
             };
           };
-          
-          // Vérifier périodiquement les mises à jour
-          setInterval(() => {
-            registration.update();
-          }, 60 * 60 * 1000); // Vérifier toutes les heures
         })
         .catch(error => {
           console.error('Error during service worker registration:', error);

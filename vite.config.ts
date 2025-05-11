@@ -13,6 +13,7 @@ export default defineConfig({
       manifest: {
         name: "MyGGV",
         short_name: "MyGGV",
+        id: "/home",
         description:
           "A community-driven platform connecting users through interactive maps, real-time chat, forums, and local services. Share your location, discover nearby services, and engage with your community in a secure and user-friendly environment.",
         start_url: "/home",
@@ -26,39 +27,55 @@ export default defineConfig({
             src: "/icons/icon-72x72.png",
             sizes: "72x72",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any"
           },
           {
             src: "/icons/icon-96x96.png",
             sizes: "96x96",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any"
           },
           {
             src: "/icons/icon-144x144.png",
             sizes: "144x144",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any"
           },
           {
             src: "/icons/icon-192x192.png",
             sizes: "192x192",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any"
           },
           {
             src: "/icons/icon-512x512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any"
           },
           {
             src: "/icons/icon-512x512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "maskable",
+            purpose: "maskable"
           },
         ],
+        // screenshots: [
+        //   {
+        //     src: "/screenshots/desktop-home.png",
+        //     sizes: "1280x800",
+        //     type: "image/png",
+        //     form_factor: "wide",
+        //     label: "Home Screen"
+        //   },
+        //   {
+        //     src: "/screenshots/desktop-profile.png",
+        //     sizes: "1280x800",
+        //     type: "image/png",
+        //     form_factor: "wide",
+        //     label: "Profile Page"
+        //   }
+        // ],
         shortcuts: [
           {
             name: "Accueil",
