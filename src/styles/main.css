@@ -88,7 +88,7 @@ body {
     "asi head"
     "asi main"
     "asi foot";
-  background-color: #2a2a2a; /* Même couleur que le main */
+  /* background-color: #2a2a2a; Même couleur que le main */
 }
 
 header {
