@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
+import Spinner from "../components/ui/Spinner";
 import "./locationAssociation.css";
 
 interface OnboardingLocationAssociationProps {
@@ -45,6 +46,7 @@ export const LocationAssociation = ({
         .select("profile_id, is_verified, is_primary")
         .eq("location_id", locationId)
         .eq("is_verified", true)
+        .eq("is_primary", true)
         .limit(1);
 
       if (error) throw error;
@@ -84,13 +86,11 @@ export const LocationAssociation = ({
 
       if (error) throw error;
 
-      toast.info(
-        "Demande envoyée au résident principal. Attente de validation."
-      );
+      toast.info("Request sent to the primary resident. Waiting for approval.");
       if (onRequestSent) onRequestSent();
     } catch (error) {
       console.error("Erreur création demande:", error);
-      toast.error("Échec de l'envoi de la demande.");
+      toast.error("Failed to send the request.");
     }
   };
 
@@ -158,8 +158,7 @@ export const LocationAssociation = ({
     }
   };
 
-  // Affichage d'un indicateur de chargement
-  if (loading) return <div>Loading available locations...</div>;
+  if (loading) return <Spinner />;
 
   return (
     <div className="onboarding-location-association">

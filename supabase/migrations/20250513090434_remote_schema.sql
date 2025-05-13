@@ -78,7 +78,7 @@ CREATE OR REPLACE FUNCTION "public"."auto_verify_first_user"() RETURNS "trigger"
 BEGIN
     -- Vérifier si c'est la première association pour cette location
     IF NOT EXISTS (
-        SELECT 1 FROM public.profile_location_associations 
+        SELECT 1 FROM public.profile_location_associations
         WHERE location_id = NEW.location_id AND is_verified = TRUE
     ) THEN
         -- Premier utilisateur: automatiquement vérifié et défini comme primaire
@@ -114,17 +114,12 @@ $$;
 ALTER FUNCTION "public"."create_location_request_notification"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_location_response_notification"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    AS $$
-DECLARE
-    user_email TEXT;
+CREATE OR REPLACE FUNCTION "public"."create_location_response_notification"() 
+RETURNS "trigger"
+LANGUAGE "plpgsql"
+AS $$
 BEGIN
-    -- Récupérer l'email de l'utilisateur
-    SELECT email INTO user_email FROM auth.users WHERE id = NEW.requester_id;
-    
     IF OLD.status = 'pending' AND NEW.status = 'approved' THEN
-        -- Notification pour le demandeur - approuvé
         INSERT INTO public.notifications (user_id, type, message, related_id)
         VALUES (
             NEW.requester_id,
@@ -133,19 +128,14 @@ BEGIN
             NEW.id
         );
         
-        -- Envoyer un email via Supabase Edge Functions ou autre service
-        PERFORM http_post(
-            'https://your-project.supabase.co/functions/v1/send-email',
-            json_build_object(
-                'to', user_email,
-                'subject', 'Location Request Approved',
-                'body', 'Your request to be associated with a location has been approved. You can now access the full application.'
-            )::text,
-            'application/json'
-        );
     ELSIF OLD.status = 'pending' AND NEW.status = 'rejected' THEN
-        -- Notification similaire pour le rejet
-        -- ...
+        INSERT INTO public.notifications (user_id, type, message, related_id)
+        VALUES (
+            NEW.requester_id,
+            'location_rejected',
+            'Your location association request has been rejected',
+            NEW.id
+        );
     END IF;
     
     RETURN NEW;
@@ -248,25 +238,32 @@ ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."update_association_on_request_approval"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
     AS $$
+DECLARE
+  is_approver_valid BOOLEAN;
 BEGIN
-    -- Si la demande est approuvée
-    IF NEW.status = 'approved' AND OLD.status = 'pending' THEN
-        -- Créer l'association
-        INSERT INTO public.profile_location_associations (
-            profile_id, 
-            location_id, 
-            is_verified, 
-            is_primary
-        ) VALUES (
-            NEW.requester_id,
-            NEW.location_id,
-            TRUE,
-            FALSE
-        );
+  IF NEW.status = 'approved' AND OLD.status = 'pending' THEN
+    -- Vérifie que l'approbateur existe dans profiles (sans auth.users)
+    SELECT EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE id = NEW.approver_id
+    ) INTO is_approver_valid;
+
+    IF NOT is_approver_valid THEN
+      RAISE EXCEPTION 'Approver not found in profiles';
     END IF;
-    RETURN NEW;
+
+    -- Crée l'association
+    INSERT INTO profile_location_associations (
+      profile_id, location_id, is_verified, is_active
+    )
+    VALUES (
+      NEW.requester_id, NEW.location_id, TRUE, TRUE
+    )
+    ON CONFLICT (profile_id, location_id) 
+    DO UPDATE SET is_verified = TRUE, is_active = TRUE;
+  END IF;
+  RETURN NEW;
 END;
 $$;
 
@@ -753,6 +750,8 @@ CREATE TABLE IF NOT EXISTS "public"."profile_location_associations" (
     "is_main" boolean DEFAULT true,
     "is_primary" boolean DEFAULT false
 );
+
+ALTER TABLE ONLY "public"."profile_location_associations" FORCE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."profile_location_associations" OWNER TO "postgres";
@@ -1293,7 +1292,7 @@ ALTER TABLE ONLY "public"."profile_location_associations"
 
 
 ALTER TABLE ONLY "public"."profiles"
-    ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "profiles_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE NOT VALID;
 
 
 
@@ -1324,6 +1323,10 @@ ALTER TABLE ONLY "public"."services"
 
 ALTER TABLE ONLY "public"."services"
     ADD CONSTRAINT "services_owner_id_fkey" FOREIGN KEY ("owner_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+CREATE POLICY "Accès profil utilisateur" ON "public"."profiles" FOR SELECT USING ((("id" = "auth"."uid"()) OR ("is_public_profile" = true)));
 
 
 
@@ -1418,6 +1421,32 @@ CREATE POLICY "Authenticated users can read service_categories" ON "public"."ser
 
 
 CREATE POLICY "Authenticated users can read services" ON "public"."services" FOR SELECT TO "authenticated" USING (true);
+
+
+
+CREATE POLICY "Création des demandes" ON "public"."location_association_requests" FOR INSERT WITH CHECK ((("requester_id" = "auth"."uid"()) AND ("status" = 'pending'::"text")));
+
+
+
+CREATE POLICY "Gestion des associations" ON "public"."profile_location_associations" USING ((("profile_id" = "auth"."uid"()) OR ("is_verified" = true))) WITH CHECK ((("profile_id" = "auth"."uid"()) OR (EXISTS ( SELECT 1
+   FROM "public"."location_association_requests"
+  WHERE (("location_association_requests"."requester_id" = "profile_location_associations"."profile_id") AND ("location_association_requests"."location_id" = "profile_location_associations"."location_id") AND ("location_association_requests"."approver_id" = "auth"."uid"()) AND ("location_association_requests"."status" = 'approved'::"text"))))));
+
+
+
+CREATE POLICY "Insertion via trigger seulement" ON "public"."profile_location_associations" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."location_association_requests"
+  WHERE (("location_association_requests"."requester_id" = "profile_location_associations"."profile_id") AND ("location_association_requests"."location_id" = "profile_location_associations"."location_id") AND ("location_association_requests"."status" = 'approved'::"text")))));
+
+
+
+CREATE POLICY "Lecture des demandes" ON "public"."location_association_requests" FOR SELECT USING ((("requester_id" = "auth"."uid"()) OR ("approver_id" = "auth"."uid"())));
+
+
+
+CREATE POLICY "Mise à jour des demandes" ON "public"."location_association_requests" FOR UPDATE USING (((("approver_id" = "auth"."uid"()) AND ("status" = 'pending'::"text")) OR (EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"text")))))) WITH CHECK (("status" = ANY (ARRAY['approved'::"text", 'rejected'::"text"])));
 
 
 
@@ -1575,14 +1604,6 @@ CREATE POLICY "Only admins can update service_categories" ON "public"."service_c
 
 
 
-CREATE POLICY "Only associated users can deactivate associations" ON "public"."profile_location_associations" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
-   FROM "public"."profile_location_associations" "pla"
-  WHERE (("pla"."location_id" = "pla"."location_id") AND ("pla"."profile_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
-   FROM "public"."profile_location_associations" "pla"
-  WHERE (("pla"."location_id" = "pla"."location_id") AND ("pla"."profile_id" = "auth"."uid"())))));
-
-
-
 CREATE POLICY "Only associated users can lock/unlock locations" ON "public"."locations" FOR UPDATE TO "authenticated" USING ((EXISTS ( SELECT 1
    FROM "public"."profile_location_associations" "pla"
   WHERE (("pla"."location_id" = "locations"."id") AND ("pla"."profile_id" = "auth"."uid"()))))) WITH CHECK ((EXISTS ( SELECT 1
@@ -1699,14 +1720,6 @@ CREATE POLICY "Only service owners can update hours" ON "public"."service_hours"
 
 
 
-CREATE POLICY "Primary users can approve or reject requests" ON "public"."location_association_requests" FOR UPDATE TO "authenticated" USING (("approver_id" = "auth"."uid"())) WITH CHECK (("approver_id" = "auth"."uid"()));
-
-
-
-CREATE POLICY "Users can create their own requests" ON "public"."location_association_requests" FOR INSERT TO "authenticated" WITH CHECK (("requester_id" = "auth"."uid"()));
-
-
-
 CREATE POLICY "Users can delete their own profiles" ON "public"."profiles" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "id"));
 
 
@@ -1729,31 +1742,11 @@ CREATE POLICY "Users can mark received messages as read" ON "public"."direct_mes
 
 
 
-CREATE POLICY "Users can mark their own associations as main" ON "public"."profile_location_associations" FOR UPDATE TO "authenticated" USING (("profile_id" = "auth"."uid"())) WITH CHECK (("profile_id" = "auth"."uid"()));
-
-
-
-CREATE POLICY "Users can only read verified associations" ON "public"."profile_location_associations" FOR SELECT TO "authenticated" USING (("is_verified" = true));
-
-
-
 CREATE POLICY "Users can read their own notifications" ON "public"."notifications" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
 
 
 
 CREATE POLICY "Users can read their own profiles" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
-
-
-
-CREATE POLICY "Users can read their own requests" ON "public"."location_association_requests" FOR SELECT TO "authenticated" USING ((("requester_id" = "auth"."uid"()) OR ("approver_id" = "auth"."uid"())));
-
-
-
-CREATE POLICY "Users can remove their own location associations" ON "public"."profile_location_associations" FOR DELETE TO "authenticated" USING (("profile_id" = "auth"."uid"()));
-
-
-
-CREATE POLICY "Users can request associations, but they must be verified" ON "public"."profile_location_associations" FOR INSERT TO "authenticated" WITH CHECK (("profile_id" = "auth"."uid"()));
 
 
 

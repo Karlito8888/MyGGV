@@ -8,8 +8,9 @@ import Signup from "./pages/Signup";
 import OnboardingModals from "./components/OnboardingModals";
 import PendingApprovalPage from "./components/PendingApprovalPage";
 import { useAuth } from "./hooks/useAuth";
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Spinner from "./components/ui/Spinner";
 // import { UpdatePrompt } from "./components/UpdatePrompt";
 
 function App() {
@@ -34,8 +35,8 @@ function App() {
         checkUserStatus(session);
         // Rediriger vers /home si l'utilisateur vient de se connecter
         const currentPath = window.location.pathname;
-        if (currentPath === '/' || currentPath === '/signup') {
-          window.location.href = '/home';
+        if (currentPath === "/" || currentPath === "/signup") {
+          window.location.href = "/home";
         }
       } else {
         setLoading(false);
@@ -119,7 +120,7 @@ function App() {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <Spinner />;
 
   return (
     <>
@@ -132,19 +133,22 @@ function App() {
         <OnboardingModals session={session} />
       )}
 
-      {session && role !== "admin" &&
+      {session &&
+        role !== "admin" &&
         hasCompletedOnboarding &&
         hasApprovedLocation === false &&
         hasPendingRequest && <PendingApprovalPage session={session} />}
 
-      {session && (role === "admin" || (hasCompletedOnboarding && hasApprovedLocation)) && (
-        <>
-          <main>
-            {/* <InstallPrompt /> */}
-            <Outlet />
-          </main>
-        </>
-      )}
+      {session &&
+        (role === "admin" ||
+          (hasCompletedOnboarding && hasApprovedLocation)) && (
+          <>
+            <main>
+              {/* <InstallPrompt /> */}
+              <Outlet />
+            </main>
+          </>
+        )}
 
       <footer>{/* Contenu du footer */}</footer>
 

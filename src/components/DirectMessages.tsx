@@ -4,6 +4,8 @@ import { supabase } from "../lib/supabase";
 import { toast } from "react-toastify";
 import "./directMessages.css";
 import { useNotifications } from "../hooks/useNotifications";
+import SwipeToDelete from "react-swipe-to-delete-ios";
+import Spinner from "../components/ui/Spinner";
 
 interface DirectMessage {
   id: string;
@@ -37,8 +39,8 @@ export default function DirectMessages({ session }: { session: Session }) {
     fetchConversations();
 
     // Abonnement aux nouveaux messages
-    const subscription = supabase
-      .channel("public:direct_messages")
+    const channel = supabase
+      .channel("direct_messages")
       .on(
         "postgres_changes",
         {
@@ -47,18 +49,18 @@ export default function DirectMessages({ session }: { session: Session }) {
           table: "direct_messages",
           filter: `receiver_id=eq.${session.user.id}`,
         },
-        () => {
-          toast.info("You have a new message");
-          fetchConversations();
-          if (activeConversation) {
-            fetchMessages(activeConversation);
+        (payload) => {
+          if (
+            payload.new.sender_id === "b3f38933-b0ec-44a0-89f2-f24e5befed80"
+          ) {
+            fetchMessages(activeConversation || "");
           }
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      supabase.removeChannel(channel);
     };
   }, [session, activeConversation]);
 
@@ -77,6 +79,32 @@ export default function DirectMessages({ session }: { session: Session }) {
       });
     }
   }, [notifications, activeConversation, markAsRead]);
+
+  useEffect(() => {
+    if (activeConversation && messages.length > 0) {
+      // Filtrer les messages non lus de l'admin
+      const unreadAdminMessages = messages.filter(
+        (msg) =>
+          msg.sender_id === "b3f38933-b0ec-44a0-89f2-f24e5befed80" &&
+          !msg.is_read
+      );
+
+      // Marquer comme lus
+      if (unreadAdminMessages.length > 0) {
+        supabase
+          .from("direct_messages")
+          .update({ is_read: true })
+          .in(
+            "id",
+            unreadAdminMessages.map((msg) => msg.id)
+          )
+          .then(() => {
+            // Optionnel : Rafraîchir les messages si nécessaire
+            fetchMessages(activeConversation);
+          });
+      }
+    }
+  }, [messages, activeConversation]);
 
   async function fetchConversations() {
     try {
@@ -178,8 +206,16 @@ export default function DirectMessages({ session }: { session: Session }) {
     }
   }
 
-  if (loading && !activeConversation)
-    return <div>Loading conversations...</div>;
+  const deleteMessage = async (messageId: string) => {
+    await supabase.from("direct_messages").delete().eq("id", messageId);
+    fetchMessages(activeConversation || "");
+  };
+
+  const handleDelete = (messageId: string) => {
+    deleteMessage(messageId);
+  };
+
+  if (loading && !activeConversation) return <Spinner />;
 
   return (
     <div className="direct-messages">
@@ -219,22 +255,34 @@ export default function DirectMessages({ session }: { session: Session }) {
           <>
             <div className="messages-list">
               {messages.map((msg) => (
-                <div
+                <SwipeToDelete
                   key={msg.id}
-                  className={`message-bubble ${
-                    msg.sender_id === session.user.id ? "sent" : "received"
-                  }`}
+                  onDelete={() => handleDelete(msg.id)}
+                  deleteColor="rgba(252, 58, 48, 1.00)"
+                  deleteText="Delete"
+                  height={80}
+                  transitionDuration={250}
+                  deleteWidth={75}
+                  className="swipe-to-delete-container"
                 >
-                  <div className="message-content">{msg.content}</div>
-                  <div className="message-meta">
-                    <span className="message-time">
-                      {new Date(msg.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                  <div
+                    className={`message-bubble ${
+                      msg.sender_id === "b3f38933-b0ec-44a0-89f2-f24e5befed80"
+                        ? "system-message"
+                        : ""
+                    }`}
+                  >
+                    <div className="message-content">{msg.content}</div>
+                    <div className="message-meta">
+                      <span className="message-time">
+                        {new Date(msg.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                </SwipeToDelete>
               ))}
             </div>
             <div className="message-input">

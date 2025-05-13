@@ -1,3 +1,7 @@
+.onboarding-modal {
+  padding-inline: clamp(0.1rem, -12.275rem + 39.6vw, 10rem);
+}
+
 .onboarding-modal h2 {
   background: linear-gradient(135deg, #50aa61, #f3c549);
   -webkit-background-clip: text;
@@ -35,8 +39,21 @@
   margin-top: 1rem;
 }
 
+.onboarding-modal form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.onboarding-modal .justify-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .onboarding-button {
   width: auto;
+  /* margin-inline: auto; */
   padding: 1rem;
   border-radius: 8px;
   border: none;

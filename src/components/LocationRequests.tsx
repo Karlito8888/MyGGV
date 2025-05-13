@@ -65,7 +65,7 @@ export default function LocationRequests({ session }: { session: Session }) {
       .eq("status", "pending");
 
     if (error) {
-      toast.error("Erreur lors du chargement des demandes");
+      toast.error("Error loading requests");
       return;
     }
     setRequests(data || []);
@@ -78,31 +78,37 @@ export default function LocationRequests({ session }: { session: Session }) {
     try {
       setProcessingId(requestId);
 
-      // Ajout des logs de débogage
-      console.log("Request ID:", requestId);
-      console.log("New Status:", status);
-      console.log("Current User ID:", session.user.id);
-      console.log("User ID:", session.user.id);
-      console.log("Request Data:", { requestId, status });
-
-      const { error } = await supabase
+      const { error: updateError } = await supabase
         .from("location_association_requests")
         .update({ status })
         .eq("id", requestId)
         .eq("approver_id", session.user.id);
 
-      if (error) {
-        console.error("Supabase Error:", error); // Log détaillé de l'erreur
-        throw error;
+      if (updateError) {
+        console.error("Supabase Error:", updateError);
+        throw updateError;
+      }
+
+      const { error: deleteError } = await supabase
+        .from("notifications")
+        .delete()
+        .eq("related_id", requestId)
+        .eq("type", "location_request");
+
+      if (deleteError) {
+        console.error("Supabase Error (delete notification):", deleteError);
+        throw deleteError;
       }
 
       toast.success(
-        `Demande ${status === "approved" ? "approuvée" : "rejetée"} avec succès`
+        `Request ${
+          status === "approved" ? "approved" : "rejected"
+        } successfully`
       );
-      await fetchRequests(); // Rafraîchir la liste après la mise à jour
+      await fetchRequests();
     } catch (error) {
-      console.error("Error details:", error); // Log détaillé de l'erreur
-      toast.error("Une erreur est survenue");
+      console.error("Error details:", error);
+      toast.error("An error occurred");
     } finally {
       setProcessingId(null);
     }
@@ -111,7 +117,7 @@ export default function LocationRequests({ session }: { session: Session }) {
   return (
     <div className="location-requests">
       {requests.length === 0 ? (
-        <p>Aucune demande en attente</p>
+        <p>No pending requests</p>
       ) : (
         <ul>
           {requests.map((request) => (

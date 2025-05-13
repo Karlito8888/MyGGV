@@ -31,7 +31,7 @@ function Aside() {
   const hasMessageNotifications = unreadCount > 0;
 
   if (!user) {
-    return <div>Veuillez vous connecter pour accéder à votre profil.</div>;
+    return <div>Please log in to access your profile.</div>;
   }
 
   return (

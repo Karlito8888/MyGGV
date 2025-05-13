@@ -123,7 +123,8 @@ const useProfile = (userId: string | undefined) => {
       return data;
     } catch (err) {
       console.error("Error updating profile:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to update profile";
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to update profile";
       setError(errorMessage);
       toast.error(errorMessage);
       throw err;
@@ -142,11 +143,13 @@ export const UserDashboard = () => {
   // Hooks
   const { user } = useAuth();
   const { profile, error: profileError, updateProfile } = useProfile(user?.id);
-  
+
   // State
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-  const [myAssociations, setMyAssociations] = useState<LocationAssociationType[]>([]);
+  const [myAssociations, setMyAssociations] = useState<
+    LocationAssociationType[]
+  >([]);
   const [hasFetchedAssociations, setHasFetchedAssociations] = useState(false);
 
   // Handlers
@@ -160,7 +163,9 @@ export const UserDashboard = () => {
       window.location.href = "/";
     } catch (err) {
       console.error("Error deleting account:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to delete account");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete account"
+      );
     }
   };
 
@@ -193,10 +198,7 @@ export const UserDashboard = () => {
   }, [user?.id]);
 
   // Derived state
-  const combinedError = useMemo(
-    () => profileError,
-    [profileError]
-  );
+  const combinedError = useMemo(() => profileError, [profileError]);
 
   // UI helpers
   const renderProfileField = (label: string, value: string | undefined) => (
@@ -209,7 +211,7 @@ export const UserDashboard = () => {
   return (
     <div className="user-dashboard">
       <h2>My Dashboard</h2>
-      
+
       {/* Navigation and Edit buttons */}
       <div
         style={{
@@ -220,7 +222,7 @@ export const UserDashboard = () => {
           // margin: "1rem 0",
         }}
       >
-        <Link to="/profile" className="profile-link">
+        <Link to={`/profile/${user?.id}`} className="profile-link">
           <FaArrowAltCircleLeft className="profile-link-icon" />
         </Link>
         <button
@@ -282,14 +284,19 @@ export const UserDashboard = () => {
                       }}
                     />
                     <span style={{ color: "#3e8a4f" }}>X</span>
-                    <strong style={{ color: "#f4f4f4" }}>{profile.coins}</strong>
+                    <strong style={{ color: "#f4f4f4" }}>
+                      {profile.coins}
+                    </strong>
                   </div>
                 </div>
-                {renderProfileField("Name", profile.display_name || profile.full_name)}
+                {renderProfileField(
+                  "Name",
+                  profile.display_name || profile.full_name
+                )}
                 {renderProfileField("Description", profile.description)}
                 {renderProfileField("Occupation", profile.occupation)}
               </div>
-              
+
               {/* Locations Section */}
               <div className="info-section locations-section">
                 {renderH3("My Location")}
@@ -298,7 +305,8 @@ export const UserDashboard = () => {
                     myAssociations.map((assoc) => (
                       <div key={assoc.location_id} className="location-item">
                         <span>
-                          Block {assoc.location?.block} - Lot {assoc.location?.lot}
+                          Block {assoc.location?.block} - Lot{" "}
+                          {assoc.location?.lot}
                         </span>
                       </div>
                     ))
@@ -307,7 +315,7 @@ export const UserDashboard = () => {
                   )}
                 </div>
               </div>
-              
+
               {/* Services Section */}
               <div className="info-section services-section">
                 {renderH3("Services & Business")}
@@ -324,11 +332,14 @@ export const UserDashboard = () => {
                   {profile.has_a_business_outside ? "Yes" : "No"}
                 </p>
               </div>
-              
+
               {/* Contacts Section */}
               <div className="info-section contacts-section">
                 {renderH3("Contacts")}
-                {(profile.facebook || profile.messenger || profile.whatsapp || profile.viber) ? (
+                {profile.facebook ||
+                profile.messenger ||
+                profile.whatsapp ||
+                profile.viber ? (
                   <div className="contact-icons">
                     {profile.facebook && (
                       <div className="contact-icon" title="Facebook">

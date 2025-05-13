@@ -12,21 +12,21 @@ import { useNotifications } from "@/hooks/useNotifications";
 type TabType = "requests" | "direct" | "chat";
 
 export default function Messages() {
-  const [activeTab, setActiveTab] = useState<TabType>("requests");
+  const [activeTab, setActiveTab] = useState<TabType>("chat");
   const [session, setSession] = useState<Session | null>(null);
   const { notifications } = useNotifications();
 
   // Compter les notifications par type
-  const requestNotifications = notifications.filter(n => 
-    n.type === 'location_request' && !n.is_read
+  const requestNotifications = notifications.filter(
+    (n) => n.type === "location_request" && !n.is_read
   ).length;
-  
-  const directMessageNotifications = notifications.filter(n => 
-    n.type === 'direct_message' && !n.is_read
+
+  const directMessageNotifications = notifications.filter(
+    (n) => n.type === "direct_message" && !n.is_read
   ).length;
-  
-  const chatNotifications = notifications.filter(n => 
-    n.type === 'chat_message' && !n.is_read
+
+  const chatNotifications = notifications.filter(
+    (n) => n.type === "chat_message" && !n.is_read
   ).length;
 
   // Récupérer la session Supabase au chargement du composant
@@ -43,7 +43,7 @@ export default function Messages() {
         console.error("Exception in getSession:", err);
       }
     };
-    
+
     getSession();
   }, []);
 
@@ -56,7 +56,7 @@ export default function Messages() {
     <div className="messages-container">
       {/* Navigation entre les onglets */}
       <div className="messages-tabs">
-        <button 
+        <button
           className={`tab-button ${activeTab === "direct" ? "active" : ""}`}
           onClick={() => setActiveTab("direct")}
         >
@@ -65,26 +65,24 @@ export default function Messages() {
             <NotificationBadge type="direct_message" />
           )}
         </button>
-        <button 
+        <button
           className={`tab-button ${activeTab === "chat" ? "active" : ""}`}
           onClick={() => setActiveTab("chat")}
         >
           Live Chat
-          {chatNotifications > 0 && (
-            <NotificationBadge type="chat_message" />
-          )}
+          {chatNotifications > 0 && <NotificationBadge type="chat_message" />}
         </button>
-        <button 
-          className={`tab-button ${activeTab === "requests" ? "active" : ""}`}
-          onClick={() => setActiveTab("requests")}
-        >
-          Location Requests
-          {requestNotifications > 0 && (
+        {requestNotifications > 0 && (
+          <button
+            className={`tab-button ${activeTab === "requests" ? "active" : ""}`}
+            onClick={() => setActiveTab("requests")}
+          >
+            Location Requests
             <NotificationBadge type="location_request" />
-          )}
-        </button>
+          </button>
+        )}
       </div>
-      
+
       {/* Contenu des onglets */}
       <div className="tab-content">
         {activeTab === "requests" && <LocationRequests session={session} />}
