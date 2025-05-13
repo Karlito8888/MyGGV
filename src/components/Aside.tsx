@@ -8,11 +8,7 @@ import {
   FiMessageSquare,
   FiInfo,
 } from "react-icons/fi";
-import {
-  FaUserAltSlash,
-  FaSignInAlt,
-  FaRedhat,
-} from "react-icons/fa";
+import { FaUserAltSlash, FaSignInAlt, FaRedhat } from "react-icons/fa";
 import { FaPesoSign } from "react-icons/fa6";
 import { IoSearch } from "react-icons/io5";
 import { CiLogout } from "react-icons/ci";
@@ -23,15 +19,20 @@ import ggvLogo from "../assets/logos/ggv-70.png";
 import "./aside.css";
 import { useAuth } from "../hooks/useAuth";
 import { useNotifications } from "../hooks/useNotifications";
+// import { Link } from "react-router-dom";
 
 function Aside() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, role } = useAuth();
   const isLoggedIn = !!user;
   const { unreadCount } = useNotifications();
-  
+
   // Filtrer les notifications liées aux messages
   const hasMessageNotifications = unreadCount > 0;
+
+  if (!user) {
+    return <div>Veuillez vous connecter pour accéder à votre profil.</div>;
+  }
 
   return (
     <>
@@ -115,7 +116,7 @@ function Aside() {
 
             <div className="aside-nav-bottom">
               <NavLink
-                to={isLoggedIn ? "/profile" : "/signup"}
+                to={user ? `/profile/${user.id}` : "#"}
                 className={({ isActive }) =>
                   `nav-link ${isActive ? "active" : ""}`
                 }

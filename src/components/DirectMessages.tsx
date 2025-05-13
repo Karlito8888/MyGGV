@@ -26,26 +26,29 @@ export default function DirectMessages({ session }: { session: Session }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [activeConversation, setActiveConversation] = useState<string | null>(null);
+  const [activeConversation, setActiveConversation] = useState<string | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const { markAsRead, notifications } = useNotifications();
 
   // Charger les conversations
   useEffect(() => {
     fetchConversations();
-    
+
     // Abonnement aux nouveaux messages
     const subscription = supabase
-      .channel('public:direct_messages')
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'direct_messages',
-          filter: `receiver_id=eq.${session.user.id}`
-        }, 
+      .channel("public:direct_messages")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "direct_messages",
+          filter: `receiver_id=eq.${session.user.id}`,
+        },
         () => {
-          toast.info('You have a new message');
+          toast.info("You have a new message");
           fetchConversations();
           if (activeConversation) {
             fetchMessages(activeConversation);
@@ -53,7 +56,7 @@ export default function DirectMessages({ session }: { session: Session }) {
         }
       )
       .subscribe();
-    
+
     return () => {
       supabase.removeChannel(subscription);
     };
@@ -63,12 +66,13 @@ export default function DirectMessages({ session }: { session: Session }) {
   useEffect(() => {
     if (activeConversation) {
       const directMessageNotifications = notifications.filter(
-        n => n.type === 'direct_message' && 
-             n.related_id === activeConversation && 
-             !n.is_read
+        (n) =>
+          n.type === "direct_message" &&
+          n.related_id === activeConversation &&
+          !n.is_read
       );
-      
-      directMessageNotifications.forEach(notification => {
+
+      directMessageNotifications.forEach((notification) => {
         markAsRead(notification.id);
       });
     }
@@ -80,8 +84,9 @@ export default function DirectMessages({ session }: { session: Session }) {
       const userId = session.user.id;
 
       // Récupérer les conversations (utilisateurs avec qui on a échangé des messages)
-      const { data, error } = await supabase
-        .rpc('get_conversations', { p_user_id: userId });
+      const { data, error } = await supabase.rpc("get_conversations", {
+        p_user_id: userId,
+      });
 
       if (error) {
         toast.error("Failed to load conversations");
@@ -105,12 +110,16 @@ export default function DirectMessages({ session }: { session: Session }) {
 
       const { data, error } = await supabase
         .from("direct_messages")
-        .select(`
+        .select(
+          `
           id, sender_id, receiver_id, content, created_at, is_read,
           profiles:sender_id(display_name, full_name)
-        `)
-        .or(`and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`)
-        .order('created_at', { ascending: true });
+        `
+        )
+        .or(
+          `and(sender_id.eq.${userId},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${userId})`
+        )
+        .order("created_at", { ascending: true });
 
       if (error) {
         toast.error("Failed to load messages");
@@ -125,11 +134,14 @@ export default function DirectMessages({ session }: { session: Session }) {
           content: item.content,
           created_at: item.created_at,
           is_read: item.is_read,
-          sender_name: item.profiles?.display_name || item.profiles?.full_name || "Unknown",
+          sender_name:
+            item.profiles?.display_name ||
+            item.profiles?.full_name ||
+            "Unknown",
         }));
 
         setMessages(formattedMessages);
-        
+
         // Marquer les messages comme lus
         await supabase
           .from("direct_messages")
@@ -146,15 +158,13 @@ export default function DirectMessages({ session }: { session: Session }) {
 
   async function sendMessage() {
     if (!newMessage.trim() || !activeConversation) return;
-    
+
     try {
-      const { error } = await supabase
-        .from("direct_messages")
-        .insert({
-          sender_id: session.user.id,
-          receiver_id: activeConversation,
-          content: newMessage,
-        });
+      const { error } = await supabase.from("direct_messages").insert({
+        sender_id: session.user.id,
+        receiver_id: activeConversation,
+        content: newMessage,
+      });
 
       if (error) {
         toast.error("Failed to send message");
@@ -168,7 +178,8 @@ export default function DirectMessages({ session }: { session: Session }) {
     }
   }
 
-  if (loading && !activeConversation) return <div>Loading conversations...</div>;
+  if (loading && !activeConversation)
+    return <div>Loading conversations...</div>;
 
   return (
     <div className="direct-messages">
@@ -179,9 +190,11 @@ export default function DirectMessages({ session }: { session: Session }) {
         ) : (
           <ul>
             {conversations.map((conv) => (
-              <li 
-                key={conv.user_id} 
-                className={`conversation-item ${activeConversation === conv.user_id ? 'active' : ''}`}
+              <li
+                key={conv.user_id}
+                className={`conversation-item ${
+                  activeConversation === conv.user_id ? "active" : ""
+                }`}
                 onClick={() => {
                   setActiveConversation(conv.user_id);
                   fetchMessages(conv.user_id);
@@ -206,14 +219,19 @@ export default function DirectMessages({ session }: { session: Session }) {
           <>
             <div className="messages-list">
               {messages.map((msg) => (
-                <div 
-                  key={msg.id} 
-                  className={`message-bubble ${msg.sender_id === session.user.id ? 'sent' : 'received'}`}
+                <div
+                  key={msg.id}
+                  className={`message-bubble ${
+                    msg.sender_id === session.user.id ? "sent" : "received"
+                  }`}
                 >
                   <div className="message-content">{msg.content}</div>
                   <div className="message-meta">
                     <span className="message-time">
-                      {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                      {new Date(msg.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </span>
                   </div>
                 </div>
@@ -225,7 +243,7 @@ export default function DirectMessages({ session }: { session: Session }) {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Type a message..."
-                onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               />
               <button onClick={sendMessage}>Send</button>
             </div>

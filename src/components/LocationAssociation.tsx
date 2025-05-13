@@ -65,12 +65,15 @@ export const LocationAssociation = ({
    * @param locationId ID de la localisation
    * @param approverId ID de l'utilisateur principal qui doit approuver
    */
-  const createAssociationRequest = async (locationId: string, approverId: string) => {
+  const createAssociationRequest = async (
+    locationId: string,
+    approverId: string
+  ) => {
     if (!user) return;
 
     try {
-      // Créer une demande d'association
-      const { error: requestError } = await supabase
+      // Uniquement créer la demande dans location_association_requests
+      const { error } = await supabase
         .from("location_association_requests")
         .insert({
           requester_id: user.id,
@@ -79,37 +82,15 @@ export const LocationAssociation = ({
           status: "pending",
         });
 
-      if (requestError) throw requestError;
+      if (error) throw error;
 
-      // Créer une association non vérifiée
-      const { error: associationError } = await supabase
-        .from("profile_location_associations")
-        .insert({
-          profile_id: user.id,
-          location_id: locationId,
-          is_active: true,
-          is_verified: false,
-          is_primary: false,
-          is_main: true,
-        });
-
-      if (associationError) throw associationError;
-
-      // Mettre à jour le profil avec la localisation principale (même si non vérifiée)
-      await supabase
-        .from("profiles")
-        .update({ main_location_id: locationId })
-        .eq("id", user.id);
-
-      toast.info('Your location request has been sent. You will need approval from the primary resident before accessing all features.');
-
-      // Notifier le parent que la demande a été envoyée
-      if (onRequestSent) {
-        onRequestSent();
-      }
+      toast.info(
+        "Demande envoyée au résident principal. Attente de validation."
+      );
+      if (onRequestSent) onRequestSent();
     } catch (error) {
-      console.error("Error creating association request:", error);
-      toast.error('Failed to send location request. Please try again.');
+      console.error("Erreur création demande:", error);
+      toast.error("Échec de l'envoi de la demande.");
     }
   };
 
@@ -130,7 +111,9 @@ export const LocationAssociation = ({
         .single();
 
       if (locationError || !locationData) {
-        toast.error('This location does not exist. Please check your block and lot numbers.');
+        toast.error(
+          "This location does not exist. Please check your block and lot numbers."
+        );
         setSubmitting(false);
         return;
       }
@@ -138,7 +121,9 @@ export const LocationAssociation = ({
       const locationId = locationData.id;
 
       // Vérifier si la localisation a déjà un utilisateur vérifié
-      const { hasVerifiedUser, primaryUserId } = await checkLocationAssociation(locationId);
+      const { hasVerifiedUser, primaryUserId } = await checkLocationAssociation(
+        locationId
+      );
 
       if (hasVerifiedUser && primaryUserId) {
         // Cas 2: Ce n'est pas le premier utilisateur - créer une demande d'association
@@ -158,13 +143,7 @@ export const LocationAssociation = ({
 
         if (error) throw error;
 
-        // Mettre à jour le profil avec la localisation principale
-        await supabase
-          .from("profiles")
-          .update({ main_location_id: locationId })
-          .eq("id", user.id);
-
-        toast.success('Location added successfully!');
+        toast.success("Location added successfully!");
 
         // Notifier le parent que la localisation a été ajoutée
         if (onLocationAdded) {
@@ -173,7 +152,7 @@ export const LocationAssociation = ({
       }
     } catch (error) {
       console.error("Error adding association:", error);
-      toast.error('Failed to add location. Please try again.');
+      toast.error("Failed to add location. Please try again.");
     } finally {
       setSubmitting(false);
     }

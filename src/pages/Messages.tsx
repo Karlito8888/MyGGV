@@ -57,15 +57,6 @@ export default function Messages() {
       {/* Navigation entre les onglets */}
       <div className="messages-tabs">
         <button 
-          className={`tab-button ${activeTab === "requests" ? "active" : ""}`}
-          onClick={() => setActiveTab("requests")}
-        >
-          Location Requests
-          {requestNotifications > 0 && (
-            <NotificationBadge type="location_request" />
-          )}
-        </button>
-        <button 
           className={`tab-button ${activeTab === "direct" ? "active" : ""}`}
           onClick={() => setActiveTab("direct")}
         >
@@ -81,6 +72,15 @@ export default function Messages() {
           Live Chat
           {chatNotifications > 0 && (
             <NotificationBadge type="chat_message" />
+          )}
+        </button>
+        <button 
+          className={`tab-button ${activeTab === "requests" ? "active" : ""}`}
+          onClick={() => setActiveTab("requests")}
+        >
+          Location Requests
+          {requestNotifications > 0 && (
+            <NotificationBadge type="location_request" />
           )}
         </button>
       </div>

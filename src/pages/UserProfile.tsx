@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../hooks/useAuth";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import "./userProfile.css";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import pinIcon from "../assets/img/pin.png";
@@ -12,20 +12,21 @@ import viberLogo from "../assets/logos/viber.png";
 import { FaArrowAltCircleRight } from "react-icons/fa";
 
 export const UserProfile = () => {
+  const { userId } = useParams();
   const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [locationName, setLocationName] = useState<string | null>(null);
 
+  const isCurrentUser = user?.id === userId;
+
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!user) return;
-
       try {
         const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", user.id)
+          .eq("id", userId)
           .single();
 
         if (profileError) throw profileError;
@@ -55,14 +56,18 @@ export const UserProfile = () => {
     };
 
     fetchProfile();
-  }, [user]);
+  }, [userId]);
 
   const renderSectionHeader = (title: string) => <h3>{title}</h3>;
   const renderSectionContact = (title: string) => <h3>{title}</h3>;
 
   return (
     <div className="user-profile">
-      <h2>My Public Profile</h2>
+      <h2>
+        {isCurrentUser
+          ? "My Public Profile"
+          : `${profile?.display_name}'s Profile`}
+      </h2>
       {error && <div className="error-message">{error}</div>}
       {profile && (
         <>
@@ -182,7 +187,7 @@ export const UserProfile = () => {
                     <img src={viberLogo} alt="Viber" />
                   </a>
                 )}
-                
+
                 {/* WhatsApp */}
                 {profile.whatsapp && (
                   <a
@@ -194,15 +199,16 @@ export const UserProfile = () => {
                     <img src={whatsappLogo} alt="WhatsApp" />
                   </a>
                 )}
-
               </div>
             </div>
           )}
         </>
       )}
-      <Link to="/dashboard" className="dashboard-link">
-        My Dashboard <FaArrowAltCircleRight />
-      </Link>
+      {isCurrentUser && (
+        <Link to="/dashboard" className="dashboard-link">
+          My Dashboard <FaArrowAltCircleRight />
+        </Link>
+      )}
     </div>
   );
 };

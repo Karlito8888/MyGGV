@@ -72,6 +72,145 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
 
 
 
+CREATE OR REPLACE FUNCTION "public"."auto_verify_first_user"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    -- Vérifier si c'est la première association pour cette location
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profile_location_associations 
+        WHERE location_id = NEW.location_id AND is_verified = TRUE
+    ) THEN
+        -- Premier utilisateur: automatiquement vérifié et défini comme primaire
+        NEW.is_verified := TRUE;
+        NEW.is_primary := TRUE;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."auto_verify_first_user"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_location_request_notification"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    -- Notification pour l'approbateur
+    INSERT INTO public.notifications (user_id, type, message, related_id)
+    VALUES (
+        NEW.approver_id,
+        'location_request',
+        'Someone has requested to be associated with your location',
+        NEW.id
+    );
+    
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_location_request_notification"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_location_response_notification"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+DECLARE
+    user_email TEXT;
+BEGIN
+    -- Récupérer l'email de l'utilisateur
+    SELECT email INTO user_email FROM auth.users WHERE id = NEW.requester_id;
+    
+    IF OLD.status = 'pending' AND NEW.status = 'approved' THEN
+        -- Notification pour le demandeur - approuvé
+        INSERT INTO public.notifications (user_id, type, message, related_id)
+        VALUES (
+            NEW.requester_id,
+            'location_approved',
+            'Your location association request has been approved',
+            NEW.id
+        );
+        
+        -- Envoyer un email via Supabase Edge Functions ou autre service
+        PERFORM http_post(
+            'https://your-project.supabase.co/functions/v1/send-email',
+            json_build_object(
+                'to', user_email,
+                'subject', 'Location Request Approved',
+                'body', 'Your request to be associated with a location has been approved. You can now access the full application.'
+            )::text,
+            'application/json'
+        );
+    ELSIF OLD.status = 'pending' AND NEW.status = 'rejected' THEN
+        -- Notification similaire pour le rejet
+        -- ...
+    END IF;
+    
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."create_location_response_notification"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_conversations"("p_user_id" "uuid") RETURNS TABLE("user_id" "uuid", "display_name" "text", "last_message" "text", "unread_count" bigint)
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  RETURN QUERY
+  WITH conversations AS (
+    -- Trouver tous les utilisateurs avec qui l'utilisateur actuel a échangé des messages
+    SELECT 
+      CASE 
+        WHEN sender_id = p_user_id THEN receiver_id
+        ELSE sender_id
+      END AS other_user_id
+    FROM direct_messages
+    WHERE sender_id = p_user_id OR receiver_id = p_user_id
+    GROUP BY other_user_id
+  ),
+  last_messages AS (
+    -- Obtenir le dernier message pour chaque conversation
+    SELECT DISTINCT ON (conv.other_user_id)
+      conv.other_user_id,
+      dm.content,
+      dm.created_at
+    FROM conversations conv
+    JOIN direct_messages dm ON 
+      (dm.sender_id = conv.other_user_id AND dm.receiver_id = p_user_id) OR
+      (dm.sender_id = p_user_id AND dm.receiver_id = conv.other_user_id)
+    ORDER BY conv.other_user_id, dm.created_at DESC
+  ),
+  unread_counts AS (
+    -- Compter les messages non lus pour chaque conversation
+    SELECT 
+      sender_id,
+      COUNT(*) as count
+    FROM direct_messages
+    WHERE receiver_id = p_user_id AND is_read = false
+    GROUP BY sender_id
+  )
+  -- Joindre toutes les informations
+  SELECT 
+    c.other_user_id as user_id,
+    p.display_name,
+    lm.content as last_message,
+    COALESCE(uc.count, 0)::BIGINT as unread_count
+  FROM conversations c
+  JOIN profiles p ON c.other_user_id = p.id
+  LEFT JOIN last_messages lm ON c.other_user_id = lm.other_user_id
+  LEFT JOIN unread_counts uc ON c.other_user_id = uc.sender_id
+  ORDER BY lm.created_at DESC;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."get_conversations"("p_user_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."handle_email_update"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     AS $$
@@ -105,6 +244,34 @@ $$;
 
 
 ALTER FUNCTION "public"."handle_new_user"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_association_on_request_approval"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+BEGIN
+    -- Si la demande est approuvée
+    IF NEW.status = 'approved' AND OLD.status = 'pending' THEN
+        -- Créer l'association
+        INSERT INTO public.profile_location_associations (
+            profile_id, 
+            location_id, 
+            is_verified, 
+            is_primary
+        ) VALUES (
+            NEW.requester_id,
+            NEW.location_id,
+            TRUE,
+            FALSE
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_association_on_request_approval"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_business_inside_categories_updated_at"() RETURNS "trigger"
@@ -227,6 +394,32 @@ $$;
 
 
 ALTER FUNCTION "public"."update_main_location_id"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_message_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_message_updated_at"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."update_notifications_updated_at"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."update_notifications_updated_at"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_public_poi_categories_updated_at"() RETURNS "trigger"
@@ -405,6 +598,47 @@ CREATE TABLE IF NOT EXISTS "public"."business_outside_hours" (
 ALTER TABLE "public"."business_outside_hours" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."chat_messages" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "room_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "content" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."chat_messages" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."chat_rooms" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "name" "text" NOT NULL,
+    "description" "text",
+    "created_by" "uuid",
+    "is_public" boolean DEFAULT true,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."chat_rooms" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."direct_messages" (
+    "id" "uuid" DEFAULT "extensions"."uuid_generate_v4"() NOT NULL,
+    "sender_id" "uuid" NOT NULL,
+    "receiver_id" "uuid" NOT NULL,
+    "content" "text" NOT NULL,
+    "is_read" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "now"(),
+    "updated_at" timestamp with time zone DEFAULT "now"()
+);
+
+
+ALTER TABLE "public"."direct_messages" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."houses" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "location_id" "uuid" NOT NULL,
@@ -446,6 +680,21 @@ ALTER SEQUENCE "public"."houses_available_icons_id_seq" OWNED BY "public"."house
 
 
 
+CREATE TABLE IF NOT EXISTS "public"."location_association_requests" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "requester_id" "uuid" NOT NULL,
+    "location_id" "uuid" NOT NULL,
+    "approver_id" "uuid" NOT NULL,
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
+    CONSTRAINT "location_association_requests_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'approved'::"text", 'rejected'::"text"])))
+);
+
+
+ALTER TABLE "public"."location_association_requests" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."location_type_associations" (
     "location_id" "uuid" NOT NULL,
     "type_id" "uuid" NOT NULL
@@ -481,12 +730,28 @@ CREATE TABLE IF NOT EXISTS "public"."locations" (
 ALTER TABLE "public"."locations" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."notifications" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "type" "text" NOT NULL,
+    "message" "text" NOT NULL,
+    "related_id" "uuid",
+    "is_read" boolean DEFAULT false,
+    "created_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"()),
+    "updated_at" timestamp with time zone DEFAULT "timezone"('utc'::"text", "now"())
+);
+
+
+ALTER TABLE "public"."notifications" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."profile_location_associations" (
     "profile_id" "uuid" NOT NULL,
     "location_id" "uuid" NOT NULL,
     "is_active" boolean DEFAULT true,
     "is_verified" boolean DEFAULT false,
-    "is_main" boolean DEFAULT true
+    "is_main" boolean DEFAULT true,
+    "is_primary" boolean DEFAULT false
 );
 
 
@@ -674,6 +939,21 @@ ALTER TABLE ONLY "public"."business_outside"
 
 
 
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."chat_rooms"
+    ADD CONSTRAINT "chat_rooms_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."direct_messages"
+    ADD CONSTRAINT "direct_messages_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."houses_available_icons"
     ADD CONSTRAINT "houses_available_icons_pkey" PRIMARY KEY ("id");
 
@@ -681,6 +961,16 @@ ALTER TABLE ONLY "public"."houses_available_icons"
 
 ALTER TABLE ONLY "public"."houses"
     ADD CONSTRAINT "houses_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."location_association_requests"
+    ADD CONSTRAINT "location_association_requests_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."location_association_requests"
+    ADD CONSTRAINT "location_association_requests_requester_id_location_id_key" UNIQUE ("requester_id", "location_id");
 
 
 
@@ -701,6 +991,11 @@ ALTER TABLE ONLY "public"."location_types"
 
 ALTER TABLE ONLY "public"."locations"
     ADD CONSTRAINT "locations_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_pkey" PRIMARY KEY ("id");
 
 
 
@@ -759,6 +1054,30 @@ ALTER TABLE ONLY "public"."services"
 
 
 
+CREATE INDEX "chat_messages_created_at_idx" ON "public"."chat_messages" USING "btree" ("created_at");
+
+
+
+CREATE INDEX "chat_messages_room_id_idx" ON "public"."chat_messages" USING "btree" ("room_id");
+
+
+
+CREATE INDEX "chat_messages_user_id_idx" ON "public"."chat_messages" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "direct_messages_created_at_idx" ON "public"."direct_messages" USING "btree" ("created_at");
+
+
+
+CREATE INDEX "direct_messages_receiver_id_idx" ON "public"."direct_messages" USING "btree" ("receiver_id");
+
+
+
+CREATE INDEX "direct_messages_sender_id_idx" ON "public"."direct_messages" USING "btree" ("sender_id");
+
+
+
 CREATE INDEX "idx_location_type_associations_location_id" ON "public"."location_type_associations" USING "btree" ("location_id");
 
 
@@ -772,6 +1091,22 @@ CREATE INDEX "idx_profiles_email" ON "public"."profiles" USING "btree" ("email")
 
 
 CREATE OR REPLACE TRIGGER "after_update_profile_location_association" AFTER INSERT OR UPDATE ON "public"."profile_location_associations" FOR EACH ROW EXECUTE FUNCTION "public"."update_main_location_id"();
+
+
+
+CREATE OR REPLACE TRIGGER "auto_verify_first_user_trigger" BEFORE INSERT ON "public"."profile_location_associations" FOR EACH ROW EXECUTE FUNCTION "public"."auto_verify_first_user"();
+
+
+
+CREATE OR REPLACE TRIGGER "on_location_request_approved" AFTER UPDATE ON "public"."location_association_requests" FOR EACH ROW EXECUTE FUNCTION "public"."update_association_on_request_approval"();
+
+
+
+CREATE OR REPLACE TRIGGER "on_location_request_created" AFTER INSERT ON "public"."location_association_requests" FOR EACH ROW EXECUTE FUNCTION "public"."create_location_request_notification"();
+
+
+
+CREATE OR REPLACE TRIGGER "on_location_request_updated" AFTER UPDATE ON "public"."location_association_requests" FOR EACH ROW EXECUTE FUNCTION "public"."create_location_response_notification"();
 
 
 
@@ -799,11 +1134,23 @@ CREATE OR REPLACE TRIGGER "update_business_outside_updated_at" BEFORE UPDATE ON 
 
 
 
+CREATE OR REPLACE TRIGGER "update_chat_message_timestamp" BEFORE UPDATE ON "public"."chat_messages" FOR EACH ROW EXECUTE FUNCTION "public"."update_message_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_direct_message_timestamp" BEFORE UPDATE ON "public"."direct_messages" FOR EACH ROW EXECUTE FUNCTION "public"."update_message_updated_at"();
+
+
+
 CREATE OR REPLACE TRIGGER "update_houses_updated_at" BEFORE UPDATE ON "public"."houses" FOR EACH ROW EXECUTE FUNCTION "public"."update_houses_updated_at"();
 
 
 
 CREATE OR REPLACE TRIGGER "update_location_type_associations_updated_at" BEFORE UPDATE ON "public"."location_type_associations" FOR EACH ROW EXECUTE FUNCTION "public"."update_location_type_associations_updated_at"();
+
+
+
+CREATE OR REPLACE TRIGGER "update_notifications_updated_at" BEFORE UPDATE ON "public"."notifications" FOR EACH ROW EXECUTE FUNCTION "public"."update_notifications_updated_at"();
 
 
 
@@ -865,6 +1212,36 @@ ALTER TABLE ONLY "public"."business_outside"
 
 
 
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_room_id_fkey" FOREIGN KEY ("room_id") REFERENCES "public"."chat_rooms"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "chat_messages_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_rooms"
+    ADD CONSTRAINT "chat_rooms_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."direct_messages"
+    ADD CONSTRAINT "direct_messages_receiver_id_fkey" FOREIGN KEY ("receiver_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."direct_messages"
+    ADD CONSTRAINT "direct_messages_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."chat_messages"
+    ADD CONSTRAINT "fk_user" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."houses"
     ADD CONSTRAINT "houses_location_id_fkey" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE CASCADE;
 
@@ -875,6 +1252,21 @@ ALTER TABLE ONLY "public"."houses"
 
 
 
+ALTER TABLE ONLY "public"."location_association_requests"
+    ADD CONSTRAINT "location_association_requests_approver_id_fkey" FOREIGN KEY ("approver_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."location_association_requests"
+    ADD CONSTRAINT "location_association_requests_location_id_fkey" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."location_association_requests"
+    ADD CONSTRAINT "location_association_requests_requester_id_fkey" FOREIGN KEY ("requester_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."location_type_associations"
     ADD CONSTRAINT "location_type_associations_location_id_fkey" FOREIGN KEY ("location_id") REFERENCES "public"."locations"("id") ON DELETE CASCADE;
 
@@ -882,6 +1274,11 @@ ALTER TABLE ONLY "public"."location_type_associations"
 
 ALTER TABLE ONLY "public"."location_type_associations"
     ADD CONSTRAINT "location_type_associations_type_id_fkey" FOREIGN KEY ("type_id") REFERENCES "public"."location_types"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."notifications"
+    ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."profiles"("id") ON DELETE CASCADE;
 
 
 
@@ -939,6 +1336,28 @@ CREATE POLICY "All users can read POI" ON "public"."public_poi_hours" FOR SELECT
 
 
 CREATE POLICY "All users can read available icons" ON "public"."houses_available_icons" FOR SELECT TO "authenticated" USING (true);
+
+
+
+CREATE POLICY "Allow authenticated users to insert their own messages" ON "public"."chat_messages" FOR INSERT WITH CHECK (("auth"."uid"() = "user_id"));
+
+
+
+CREATE POLICY "Allow trigger functions to create notifications" ON "public"."notifications" FOR INSERT TO "authenticated" WITH CHECK (true);
+
+
+
+CREATE POLICY "Allow users to read all chat messages" ON "public"."chat_messages" FOR SELECT USING (true);
+
+
+
+CREATE POLICY "Anyone can view chat messages in public rooms" ON "public"."chat_messages" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."chat_rooms"
+  WHERE (("chat_rooms"."id" = "chat_messages"."room_id") AND ("chat_rooms"."is_public" = true)))));
+
+
+
+CREATE POLICY "Anyone can view public chat rooms" ON "public"."chat_rooms" FOR SELECT USING (("is_public" = true));
 
 
 
@@ -1025,6 +1444,12 @@ CREATE POLICY "Only admins can create business_inside_categories" ON "public"."b
 
 
 CREATE POLICY "Only admins can create business_outside_categories" ON "public"."business_outside_categories" FOR INSERT TO "authenticated" WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."profiles"
+  WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"text")))));
+
+
+
+CREATE POLICY "Only admins can create chat rooms" ON "public"."chat_rooms" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
    FROM "public"."profiles"
   WHERE (("profiles"."id" = "auth"."uid"()) AND ("profiles"."role" = 'admin'::"text")))));
 
@@ -1274,11 +1699,33 @@ CREATE POLICY "Only service owners can update hours" ON "public"."service_hours"
 
 
 
+CREATE POLICY "Primary users can approve or reject requests" ON "public"."location_association_requests" FOR UPDATE TO "authenticated" USING (("approver_id" = "auth"."uid"())) WITH CHECK (("approver_id" = "auth"."uid"()));
+
+
+
+CREATE POLICY "Users can create their own requests" ON "public"."location_association_requests" FOR INSERT TO "authenticated" WITH CHECK (("requester_id" = "auth"."uid"()));
+
+
+
 CREATE POLICY "Users can delete their own profiles" ON "public"."profiles" FOR DELETE TO "authenticated" USING (("auth"."uid"() = "id"));
 
 
 
+CREATE POLICY "Users can insert messages in public rooms" ON "public"."chat_messages" FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
+   FROM "public"."chat_rooms"
+  WHERE (("chat_rooms"."id" = "chat_messages"."room_id") AND ("chat_rooms"."is_public" = true)))));
+
+
+
+CREATE POLICY "Users can insert their own direct messages" ON "public"."direct_messages" FOR INSERT WITH CHECK (("auth"."uid"() = "sender_id"));
+
+
+
 CREATE POLICY "Users can insert their own profiles" ON "public"."profiles" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can mark received messages as read" ON "public"."direct_messages" FOR UPDATE USING (("auth"."uid"() = "receiver_id")) WITH CHECK (("is_read" = true));
 
 
 
@@ -1290,7 +1737,15 @@ CREATE POLICY "Users can only read verified associations" ON "public"."profile_l
 
 
 
+CREATE POLICY "Users can read their own notifications" ON "public"."notifications" FOR SELECT TO "authenticated" USING (("user_id" = "auth"."uid"()));
+
+
+
 CREATE POLICY "Users can read their own profiles" ON "public"."profiles" FOR SELECT TO "authenticated" USING (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can read their own requests" ON "public"."location_association_requests" FOR SELECT TO "authenticated" USING ((("requester_id" = "auth"."uid"()) OR ("approver_id" = "auth"."uid"())));
 
 
 
@@ -1302,7 +1757,19 @@ CREATE POLICY "Users can request associations, but they must be verified" ON "pu
 
 
 
+CREATE POLICY "Users can update their own notifications" ON "public"."notifications" FOR UPDATE TO "authenticated" USING (("user_id" = "auth"."uid"())) WITH CHECK (("user_id" = "auth"."uid"()));
+
+
+
 CREATE POLICY "Users can update their own profiles" ON "public"."profiles" FOR UPDATE TO "authenticated" USING (("auth"."uid"() = "id"));
+
+
+
+CREATE POLICY "Users can update their own sent messages" ON "public"."direct_messages" FOR UPDATE USING (("auth"."uid"() = "sender_id"));
+
+
+
+CREATE POLICY "Users can view their own direct messages" ON "public"."direct_messages" FOR SELECT USING ((("auth"."uid"() = "sender_id") OR ("auth"."uid"() = "receiver_id")));
 
 
 
@@ -1324,16 +1791,31 @@ ALTER TABLE "public"."business_outside_categories" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."business_outside_hours" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."chat_messages" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."chat_rooms" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."direct_messages" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."houses" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."houses_available_icons" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."location_association_requests" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."location_type_associations" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."locations" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."profile_location_associations" ENABLE ROW LEVEL SECURITY;
@@ -1366,6 +1848,10 @@ ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
 
 
+
+
+
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."notifications";
 
 
 
@@ -2246,6 +2732,12 @@ GRANT ALL ON FUNCTION "public"."addgeometrycolumn"("catalog_name" character vary
 
 
 
+GRANT ALL ON FUNCTION "public"."auto_verify_first_user"() TO "anon";
+GRANT ALL ON FUNCTION "public"."auto_verify_first_user"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."auto_verify_first_user"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."box3dtobox"("public"."box3d") TO "postgres";
 GRANT ALL ON FUNCTION "public"."box3dtobox"("public"."box3d") TO "anon";
 GRANT ALL ON FUNCTION "public"."box3dtobox"("public"."box3d") TO "authenticated";
@@ -2292,6 +2784,18 @@ GRANT ALL ON FUNCTION "public"."contains_2d"("public"."geometry", "public"."box2
 GRANT ALL ON FUNCTION "public"."contains_2d"("public"."geometry", "public"."box2df") TO "anon";
 GRANT ALL ON FUNCTION "public"."contains_2d"("public"."geometry", "public"."box2df") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."contains_2d"("public"."geometry", "public"."box2df") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."create_location_request_notification"() TO "anon";
+GRANT ALL ON FUNCTION "public"."create_location_request_notification"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_location_request_notification"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."create_location_response_notification"() TO "anon";
+GRANT ALL ON FUNCTION "public"."create_location_response_notification"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_location_response_notification"() TO "service_role";
 
 
 
@@ -3041,6 +3545,12 @@ GRANT ALL ON FUNCTION "public"."geomfromewkt"("text") TO "postgres";
 GRANT ALL ON FUNCTION "public"."geomfromewkt"("text") TO "anon";
 GRANT ALL ON FUNCTION "public"."geomfromewkt"("text") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."geomfromewkt"("text") TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."get_conversations"("p_user_id" "uuid") TO "anon";
+GRANT ALL ON FUNCTION "public"."get_conversations"("p_user_id" "uuid") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."get_conversations"("p_user_id" "uuid") TO "service_role";
 
 
 
@@ -6605,6 +7115,12 @@ GRANT ALL ON FUNCTION "public"."unlockrows"("text") TO "service_role";
 
 
 
+GRANT ALL ON FUNCTION "public"."update_association_on_request_approval"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_association_on_request_approval"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_association_on_request_approval"() TO "service_role";
+
+
+
 GRANT ALL ON FUNCTION "public"."update_business_inside_categories_updated_at"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_business_inside_categories_updated_at"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_business_inside_categories_updated_at"() TO "service_role";
@@ -6656,6 +7172,18 @@ GRANT ALL ON FUNCTION "public"."update_location_type_associations_updated_at"() 
 GRANT ALL ON FUNCTION "public"."update_main_location_id"() TO "anon";
 GRANT ALL ON FUNCTION "public"."update_main_location_id"() TO "authenticated";
 GRANT ALL ON FUNCTION "public"."update_main_location_id"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_message_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_message_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_message_updated_at"() TO "service_role";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_notifications_updated_at"() TO "anon";
+GRANT ALL ON FUNCTION "public"."update_notifications_updated_at"() TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_notifications_updated_at"() TO "service_role";
 
 
 
@@ -6923,6 +7451,24 @@ GRANT ALL ON TABLE "public"."business_outside_hours" TO "service_role";
 
 
 
+GRANT ALL ON TABLE "public"."chat_messages" TO "anon";
+GRANT ALL ON TABLE "public"."chat_messages" TO "authenticated";
+GRANT ALL ON TABLE "public"."chat_messages" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."chat_rooms" TO "anon";
+GRANT ALL ON TABLE "public"."chat_rooms" TO "authenticated";
+GRANT ALL ON TABLE "public"."chat_rooms" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."direct_messages" TO "anon";
+GRANT ALL ON TABLE "public"."direct_messages" TO "authenticated";
+GRANT ALL ON TABLE "public"."direct_messages" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."houses" TO "anon";
 GRANT ALL ON TABLE "public"."houses" TO "authenticated";
 GRANT ALL ON TABLE "public"."houses" TO "service_role";
@@ -6941,6 +7487,12 @@ GRANT ALL ON SEQUENCE "public"."houses_available_icons_id_seq" TO "service_role"
 
 
 
+GRANT ALL ON TABLE "public"."location_association_requests" TO "anon";
+GRANT ALL ON TABLE "public"."location_association_requests" TO "authenticated";
+GRANT ALL ON TABLE "public"."location_association_requests" TO "service_role";
+
+
+
 GRANT ALL ON TABLE "public"."location_type_associations" TO "anon";
 GRANT ALL ON TABLE "public"."location_type_associations" TO "authenticated";
 GRANT ALL ON TABLE "public"."location_type_associations" TO "service_role";
@@ -6956,6 +7508,12 @@ GRANT ALL ON TABLE "public"."location_types" TO "service_role";
 GRANT ALL ON TABLE "public"."locations" TO "anon";
 GRANT ALL ON TABLE "public"."locations" TO "authenticated";
 GRANT ALL ON TABLE "public"."locations" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."notifications" TO "anon";
+GRANT ALL ON TABLE "public"."notifications" TO "authenticated";
+GRANT ALL ON TABLE "public"."notifications" TO "service_role";
 
 
 

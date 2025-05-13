@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Modal from "react-modal";
 import { supabase } from "../lib/supabase";
@@ -51,7 +50,7 @@ interface OnboardingModalsProps {
 export default function OnboardingModals({ session }: OnboardingModalsProps) {
   // ===== STATE =====
   const { role } = useAuth();
-  
+
   // Visibilité des modales
   const [showIntroModal, setShowIntroModal] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -61,13 +60,15 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
   // Données du formulaire
   const [displayName, setDisplayName] = useState("");
   const [fullName, setFullName] = useState("");
-  
+
   // Utiliser les hooks pour la gestion de l'image
   const { imageState, dispatchImage } = useImageCrop();
   const { handleFileChange, handleCloseCropper, uploadImage } = useImageUpload({
     onError: (error, message) => {
       console.error("Error uploading profile picture:", error);
-      toast.error(message || "Failed to upload profile picture. Please try again.");
+      toast.error(
+        message || "Failed to upload profile picture. Please try again."
+      );
     },
     onSuccess: async (publicUrl) => {
       // Mettre à jour le profil
@@ -82,7 +83,7 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
       }
 
       toast.success("Profile picture uploaded successfully!");
-      
+
       // Continuer avec le flux d'onboarding
       setShowProfilePictureModal(false);
       setShowLocationModal(true);
@@ -184,7 +185,12 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
 
     // Utiliser un format de nom de fichier standard
     const fileName = `profile_${session?.user?.id}_${Date.now()}.jpg`;
-    await uploadImage(imageState, dispatchImage, session?.user?.id || '', fileName);
+    await uploadImage(
+      imageState,
+      dispatchImage,
+      session?.user?.id || "",
+      fileName
+    );
   };
 
   /**
@@ -206,7 +212,9 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
    */
   const handleRequestSent = () => {
     setHasRequestedLocation(true);
-    toast.info("Your request has been sent to the primary resident. You'll be redirected to a waiting page.");
+    toast.info(
+      "Your request has been sent to the primary resident. You'll be redirected to a waiting page."
+    );
     // Ne pas fermer la modale, mais afficher un message d'attente
     // L'utilisateur sera redirigé vers PendingApprovalPage
     setTimeout(() => {
@@ -319,8 +327,8 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
                 <ImageCropper
                   imgSrc={imageState.src}
                   onCropComplete={(img, crop) => {
-                    dispatchImage({ type: 'SET_REF', payload: img });
-                    dispatchImage({ type: 'SET_CROP', payload: crop });
+                    dispatchImage({ type: "SET_REF", payload: img });
+                    dispatchImage({ type: "SET_CROP", payload: crop });
                   }}
                   aspect={1}
                   circularCrop={true}
@@ -343,8 +351,8 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
               >
                 Back
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="onboarding-button"
                 disabled={imageState.uploading}
               >
@@ -369,23 +377,23 @@ export default function OnboardingModals({ session }: OnboardingModalsProps) {
           <p className="text-gray-400 mb-4">
             Help us locate you in the community.
           </p>
-          
+
           {hasRequestedLocation ? (
             <div className="text-center p-4 bg-blue-900/20 rounded-lg mb-4">
               <h3 className="text-xl font-semibold mb-2">Request Sent!</h3>
               <p>
-                Your location association request has been sent to the primary resident.
-                You will be redirected to a waiting page. You'll gain full access once
-                your request is approved.
+                Your location association request has been sent to the primary
+                resident. You will be redirected to a waiting page. You'll gain
+                full access once your request is approved.
               </p>
             </div>
           ) : (
-            <LocationAssociation 
+            <LocationAssociation
               onLocationAdded={handleLocationComplete}
               onRequestSent={handleRequestSent}
             />
           )}
-          
+
           <div className="flex justify-between mt-6">
             <button
               type="button"
